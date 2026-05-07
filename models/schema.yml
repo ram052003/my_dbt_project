@@ -1,0 +1,35 @@
+version: 2
+
+sources:
+  - name: lkpSource_1
+    tables:
+      - name: PAY_PERIOD
+  - name: FlatFile_catalog_1
+    tables:
+      - name: U0287D01
+
+models:
+  - name: COUNTER_TBL
+    description: "Final target model"
+    columns:
+      - name: RUN_DATE
+        description: "RUN_DATE"
+      - name: PROCESS_NAME
+        description: "PROCESS_NAME"
+      - name: COUNTER_DESCRIPTION
+        description: "COUNTER_DESCRIPTION"
+      - name: COUNTER_VALUE
+        description: "COUNTER_VALUE"
+      - name: PP_END_YEAR
+        description: "PP_END_YEAR"
+      - name: PP_NUM
+        description: "PP_NUM"
+      - name: CYCLE_ID
+        description: "CYCLE_ID"
+  - name: COMPTIME_MESSAGE_FILE
+    description: "Final target model"
+    columns:
+      - name: SUBJECT
+        description: "SUBJECT"
+      - name: MESSAGE
+        description: "MESSAGE"
