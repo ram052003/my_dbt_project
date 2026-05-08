@@ -7,7 +7,8 @@
 		schema='EMIR_SHARED',
 		pre_hook ="",
 		post_hook ="",
-		incremental_strategy='append')
+		incremental_strategy='append'
+)
 }}
 
 With ENTITY_DIMOut as (
@@ -1895,11 +1896,11 @@ Select
 	 EOD_BALANCE as EOD_BALANCE,
 	 TO_TIMESTAMP ( '{{ var("BATCH_START_DATE") }}',
 	 'DD-MON-YYYY HH24:MI:SS' ) as o_BATCH_START_DATE,
-	 '{{ var("PMWorkflowName") }}' as WORKFLOW_NAME,
-	 '{{ var("PMMappingName") }}' as MAPPING_NAME,
+	 '{{ var("PMWorkflowName", "") }}' as WORKFLOW_NAME,
+	 '{{ var("PMMappingName", "") }}' as MAPPING_NAME,
 	 '{{ var("TARGET_NAME") }}' as TARGET_NAME,
 	 VALIDATION_NAME as VALIDATION_NAME,
-	 'FILE NAME:' || '{{ var("SOURCE_NAME") }}' || '/' || 'BUSINESS_DATE:' || BUSINESS_DATE || '/' || 'AGENT_LEI:' || AGENT_LEI || '/' as V_ERROR_MESSAGE,
+	 'FILE NAME:' || '{{ var("SOURCE_NAME", "") }}' || '/' || 'BUSINESS_DATE:' || BUSINESS_DATE || '/' || 'AGENT_LEI:' || AGENT_LEI || '/' as V_ERROR_MESSAGE,
 	 CurrentlyProcessedFileName as CurrentlyProcessedFileName,
 	 ENTITY_ID_ATTRIBUTE_NAME as ENTITY_ID_ATTRIBUTE_NAME,
 	 ENTITY_ID_VALIDATION_PASS_FAIL as ENTITY_ID_VALIDATION_PASS_FAIL,
