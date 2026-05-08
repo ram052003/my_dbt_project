@@ -1,17 +1,4 @@
-name: my_dbt_project
-version: 1.0
+name: m_EMIR_BNK_RR_BNK_CASHFLOWS_FACT
 config-version: 2
 
-profile: my_dbt_project
-
-model-paths: ["models"]
-
-models:
-  my_dbt_project:
-    staging:
-      +schema: analytics
-      +materialized: view
-
-    marts:
-      +schema: analytics
-      +materialized: table
+vars:
