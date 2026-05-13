@@ -1,85 +1,104 @@
 version: 2
 
 sources:
-  - name: ULKP_APP_VAR_CALYPSO_ERR_1
+  - name: SEQ_REJ
     tables:
-      - name: APPLICATION_VARIABLES
-  - name: SC_LKP_BATCH_DETAILS_ID_1
+      - name: SEQ_REJ
+  - name: CMIWDBName
     tables:
-      - name: BATCH_DETAILS
-  - name: FlatFile_catalog_1
+      - name: PART
+      - name: PART
+  - name: MFDBName
     tables:
-      - name: LCH_CCPDalyConcFlowsRpt_yyymmdd_ltd_dat
-  - name: SC_LKP_ENTITY_DIM_1
-    tables:
-      - name: ENTITY_DIM
+      - name: PP1PKGM
 
 models:
-  - name: SC_RR_BNK_CASHFLOWS_FACT
+  - name: PART_INS_UPD
     description: "Final target model"
     columns:
-      - name: ID
-        description: "ID"
-      - name: BATCH_ID
-        description: "BATCH_ID"
-      - name: BATCH_DETAILS_ID
-        description: "BATCH_DETAILS_ID"
-      - name: ENTITY_ID
-        description: "ENTITY_ID"
-      - name: BUSINESS_DATE
-        description: "BUSINESS_DATE"
-      - name: VALUATION_DATE
-        description: "VALUATION_DATE"
-      - name: AGENT_LEI
-        description: "AGENT_LEI"
-      - name: AGENT_ACCOUNT
-        description: "AGENT_ACCOUNT"
-      - name: AGENT_NAME
-        description: "AGENT_NAME"
-      - name: ACCOUNT_CURR
-        description: "ACCOUNT_CURR"
-      - name: PAY_BANK_INFLOWS_AMT
-        description: "PAY_BANK_INFLOWS_AMT"
-      - name: INVESTMENT_INFLOWS_AMT
-        description: "INVESTMENT_INFLOWS_AMT"
-      - name: PAY_BANK_OUTFLOWS_AMT
-        description: "PAY_BANK_OUTFLOWS_AMT"
-      - name: INVESTMENT_OUTFLOWS_AMT
-        description: "INVESTMENT_OUTFLOWS_AMT"
-      - name: EOD_BALANCE
-        description: "EOD_BALANCE"
-      - name: ERROR_IND
-        description: "ERROR_IND"
-  - name: SC_PROCESS_ERROR_DETAILS
+      - name: I_PART_KEY
+        description: "I_PART_KEY"
+      - name: I_PART
+        description: "I_PART"
+      - name: N_PART
+        description: "N_PART"
+      - name: X_PART
+        description: "X_PART"
+      - name: D_SRCE_UPD
+        description: "D_SRCE_UPD"
+      - name: T_STMP_UPD
+        description: "T_STMP_UPD"
+      - name: I_PART_SHARE
+        description: "I_PART_SHARE"
+      - name: N_DATA_SRCE_TBL
+        description: "N_DATA_SRCE_TBL"
+      - name: C_PART_CLS
+        description: "C_PART_CLS"
+      - name: N_PART_CLS
+        description: "N_PART_CLS"
+  - name: PRESENT_PARTS
     description: "Final target model"
     columns:
-      - name: ID
-        description: "ID"
-      - name: PROCESS_DATE
-        description: "PROCESS_DATE"
-      - name: REFERENCE_BATCH_ID
-        description: "REFERENCE_BATCH_ID"
-      - name: REFERENCE_PROCESS
-        description: "REFERENCE_PROCESS"
-      - name: REFERENCE_SUB_PROCESS
-        description: "REFERENCE_SUB_PROCESS"
-      - name: REFERENCE_TARGET_NAME
-        description: "REFERENCE_TARGET_NAME"
-      - name: REFERENCE_RECORD_ID
-        description: "REFERENCE_RECORD_ID"
-      - name: REFERENCE_BUSINESS_KEY
-        description: "REFERENCE_BUSINESS_KEY"
-      - name: REFERENCE_ATTRIBUTE_NAME
-        description: "REFERENCE_ATTRIBUTE_NAME"
-      - name: REFERENCE_ATTRIBUTE_VALUE
-        description: "REFERENCE_ATTRIBUTE_VALUE"
-      - name: ERROR_CODE
-        description: "ERROR_CODE"
-      - name: ERROR_SEVERITY
-        description: "ERROR_SEVERITY"
-      - name: ADDITIONAL_DETAILS
-        description: "ADDITIONAL_DETAILS"
-      - name: REFERENCE_BATCH_DETAILS_ID
-        description: "REFERENCE_BATCH_DETAILS_ID"
-      - name: CREATED_TS
-        description: "CREATED_TS"
+      - name: MAXKEY
+        description: "MAXKEY"
+      - name: CNTNR_KEY
+        description: "CNTNR_KEY"
+      - name: I_PART_KEY
+        description: "I_PART_KEY"
+      - name: C_INVC_SHPR
+        description: "C_INVC_SHPR"
+      - name: C_SHPR_TYP
+        description: "C_SHPR_TYP"
+      - name: I_PART
+        description: "I_PART"
+  - name: REJECTS_FILE
+    description: "Final target model"
+    columns:
+      - name: MAXKEY
+        description: "MAXKEY"
+      - name: CNTNR_KEY
+        description: "CNTNR_KEY"
+      - name: I_PART_KEY
+        description: "I_PART_KEY"
+      - name: C_INVC_SHPR
+        description: "C_INVC_SHPR"
+      - name: C_SHPR_TYP
+        description: "C_SHPR_TYP"
+      - name: I_PART
+        description: "I_PART"
+      - name: I_LOC_SHIP2_1
+        description: "I_LOC_SHIP2_1"
+      - name: I_SUPLR_LOC_REL_1
+        description: "I_SUPLR_LOC_REL_1"
+      - name: I_LOC_SHPFRM_1
+        description: "I_LOC_SHPFRM_1"
+      - name: I_SHPMT_SUPLR
+        description: "I_SHPMT_SUPLR"
+      - name: I_PKSLIP_SUPLR
+        description: "I_PKSLIP_SUPLR"
+      - name: I_POOLPT_SHIP2_1
+        description: "I_POOLPT_SHIP2_1"
+      - name: D_SHPMT
+        description: "D_SHPMT"
+      - name: T_SHPMT
+        description: "T_SHPMT"
+      - name: I_PART_SUPLR
+        description: "I_PART_SUPLR"
+      - name: D_ADD
+        description: "D_ADD"
+      - name: T_ADD
+        description: "T_ADD"
+      - name: I_CNVYNC
+        description: "I_CNVYNC"
+      - name: I_TRNSMODE
+        description: "I_TRNSMODE"
+      - name: I_BOL_MSTR
+        description: "I_BOL_MSTR"
+      - name: C_CARR_SCAC
+        description: "C_CARR_SCAC"
+      - name: I_LOC_CSGNE_1
+        description: "I_LOC_CSGNE_1"
+      - name: I_LOC_FINAL_DEST_1
+        description: "I_LOC_FINAL_DEST_1"
+      - name: I_SUPLR_LOC_MFG_1
+        description: "I_SUPLR_LOC_MFG_1"
