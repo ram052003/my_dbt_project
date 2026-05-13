@@ -1,9 +1,56 @@
 version: 2
 
 sources:
+  - name: ULKP_APP_VAR_CALYPSO_ERR_1
+    tables:
+      - name: APPLICATION_VARIABLES
+  - name: SC_LKP_BATCH_DETAILS_ID_1
+    tables:
+      - name: BATCH_DETAILS
+  - name: FlatFile_catalog_1
+    tables:
+      - name: LCH_CCPDalyConcFlowsRpt_yyymmdd_ltd_dat
+  - name: SC_LKP_ENTITY_DIM_1
+    tables:
+      - name: ENTITY_DIM
 
 models:
-  - name: Output_mplt_DV_PROCESS_ERROR_DETAILS1
+  - name: SC_RR_BNK_CASHFLOWS_FACT
+    description: "Final target model"
+    columns:
+      - name: ID
+        description: "ID"
+      - name: BATCH_ID
+        description: "BATCH_ID"
+      - name: BATCH_DETAILS_ID
+        description: "BATCH_DETAILS_ID"
+      - name: ENTITY_ID
+        description: "ENTITY_ID"
+      - name: BUSINESS_DATE
+        description: "BUSINESS_DATE"
+      - name: VALUATION_DATE
+        description: "VALUATION_DATE"
+      - name: AGENT_LEI
+        description: "AGENT_LEI"
+      - name: AGENT_ACCOUNT
+        description: "AGENT_ACCOUNT"
+      - name: AGENT_NAME
+        description: "AGENT_NAME"
+      - name: ACCOUNT_CURR
+        description: "ACCOUNT_CURR"
+      - name: PAY_BANK_INFLOWS_AMT
+        description: "PAY_BANK_INFLOWS_AMT"
+      - name: INVESTMENT_INFLOWS_AMT
+        description: "INVESTMENT_INFLOWS_AMT"
+      - name: PAY_BANK_OUTFLOWS_AMT
+        description: "PAY_BANK_OUTFLOWS_AMT"
+      - name: INVESTMENT_OUTFLOWS_AMT
+        description: "INVESTMENT_OUTFLOWS_AMT"
+      - name: EOD_BALANCE
+        description: "EOD_BALANCE"
+      - name: ERROR_IND
+        description: "ERROR_IND"
+  - name: SC_PROCESS_ERROR_DETAILS
     description: "Final target model"
     columns:
       - name: ID
@@ -20,8 +67,6 @@ models:
         description: "REFERENCE_TARGET_NAME"
       - name: REFERENCE_RECORD_ID
         description: "REFERENCE_RECORD_ID"
-      - name: REFERENCE_FILE_NAME
-        description: "REFERENCE_FILE_NAME"
       - name: REFERENCE_BUSINESS_KEY
         description: "REFERENCE_BUSINESS_KEY"
       - name: REFERENCE_ATTRIBUTE_NAME
@@ -34,9 +79,7 @@ models:
         description: "ERROR_SEVERITY"
       - name: ADDITIONAL_DETAILS
         description: "ADDITIONAL_DETAILS"
-      - name: Ouput_String
-        description: "Ouput_String"
       - name: REFERENCE_BATCH_DETAILS_ID
         description: "REFERENCE_BATCH_DETAILS_ID"
-      - name: BATCH_START_DATE
-        description: "BATCH_START_DATE"
+      - name: CREATED_TS
+        description: "CREATED_TS"
