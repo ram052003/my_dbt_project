@@ -41,7 +41,11 @@ PART_MAX_LKPOut as (
 Select 
  * 
  from 
-(SELECT INTEGER(COALESCE(MAX(I_PART_KEY),0)) as MAXKEY, 1 as JOINKEY FROM N_DB_APP_EDW_DEV.SCM.#'{{ var("PARTSchema", "") }}'#_PART as WITH)
+(SELECT
+    dsError_INTEGER(COALESCE(MAX(I_PART_KEY),0)) as MAXKEY,
+    1 as JOINKEY
+ FROM
+    N_DB_APP_EDW_DEV.SCM.N_DB_APP_EDW_DEV_SCM_N_DB_APP_EDW_DEV_SCM_#'{{ var("PARTSchema", "") }}'#_PART as WITH)
  ),
 
 PP1PKGMOut as (
@@ -49,7 +53,12 @@ PP1PKGMOut as (
 Select 
  * 
  from 
-(SELECT distinct LTRIM(RTRIM(I_PKG)) as I_PKG, 1 as CNTNR_KEY FROM N_DB_APP_EDW_DEV.SCM.P_PP1PKGM as WITH)
+(SELECT
+ distinct
+    LTRIM(RTRIM(I_PKG)) as I_PKG,
+    1 as CNTNR_KEY
+ FROM
+    N_DB_APP_EDW_DEV.SCM.N_DB_APP_EDW_DEV_SCM_N_DB_APP_EDW_DEV_SCM_P_PP1PKGM as WITH)
  ),
 
 PART_KEYOut as (
@@ -57,7 +66,11 @@ PART_KEYOut as (
 Select 
  * 
  from 
-(SELECT I_PART_KEY, LTRIM(RTRIM(I_PART)) as I_PART FROM N_DB_APP_EDW_DEV.SCM.#'{{ var("PARTSchema", "") }}'#_PART as WITH)
+(SELECT
+    I_PART_KEY,
+    LTRIM(RTRIM(I_PART)) as I_PART
+ FROM
+    N_DB_APP_EDW_DEV.SCM.N_DB_APP_EDW_DEV_SCM_N_DB_APP_EDW_DEV_SCM_#'{{ var("PARTSchema", "") }}'#_PART as WITH)
  ),
 
 XFR_DATA_CONVOut as (
