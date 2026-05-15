@@ -1,6 +1,10 @@
 version: 2
 
 sources:
-  - name: WDBName
+  - name: MFRDBNAME
     tables:
-      - name: AETC2,AETC_CLAIM,AETC_PART2,AETC_CARR2
+      - name: FCCDHIS
+      - name: FCCINST,PBUSADD
+  - name: WDBNAME
+    tables:
+      - name: DEALERBANK

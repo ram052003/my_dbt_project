@@ -1,0 +1,494 @@
+/* Transformation Name ==>W_DLRCRDT_DEALERBANK_INS ,Transformation Type ==>Target */
+{{
+	config(
+		materialized='incremental',
+		alias='DEALERBANK',
+		incremental_strategy='merge',
+		unique_key=[dsf_40.I_BANK = w_dlrcrdt_dlrbank_insOut.I_BANK ],
+		merge_update_columns=[
+dsf_40.I_PH = w_dlrcrdt_dlrbank_insOut.I_PH,
+dsf_40.D_EFFCTV_END = w_dlrcrdt_dlrbank_insOut.D_EFFCTV_END,
+dsf_40.C_DLR_DIV = w_dlrcrdt_dlrbank_insOut.C_DLR_DIV,
+dsf_40.I_BUS = w_dlrcrdt_dlrbank_insOut.I_BUS,
+dsf_40.I_BANK = w_dlrcrdt_dlrbank_insOut.I_BANK,
+dsf_40.I_AREA = w_dlrcrdt_dlrbank_insOut.I_AREA,
+dsf_40.N_PERSN_CNTCT = w_dlrcrdt_dlrbank_insOut.N_PERSN_CNTCT,
+dsf_40.D_EFFCTV_STRT = w_dlrcrdt_dlrbank_insOut.D_EFFCTV_STRT,
+dsf_40.T_STMP_UPD = w_dlrcrdt_dlrbank_insOut.T_STMP_UPD,
+dsf_40.D_SRCE_UPD = w_dlrcrdt_dlrbank_insOut.D_SRCE_UPD]
+	)
+}}
+
+With O_SRC_DEALERBANKOut as (
+	/* SubQuery from Source ==>O_SRC_DEALERBANK */
+Select 
+ * 
+ from 
+(SELECT FCCDHIS.I_BUS as I_BANK, FCCDHIS.I_CUST as I_BUS, LTRIM(RTRIM(FCCDHIS.I_BANK_ABA)) as I_BANK_ABA, FCCDHIS.C_FINC_SRCE_PRMRY, LTRIM(RTRIM(FCCDHIS.X_ADDR_LINE_1_BANK)) as X_ADDR_LINE_1_BANK, FCCDHIS.N_PERSN_CNTCT as N_PERSN_CNTCT, FCCDHIS.I_AREA as I_AREA, FCCDHIS.I_PH as I_PH, FCCDHIS.C_FRNCHZ_SET, FCCDHIS.T_STMP_UPD, DATE(FCCDHIS.T_STMP_UPD) as D_SRCE_UPD FROM N_DB_APP_EDW_DEV.SCM.F_FCCDHIS as FCCDHIS JOIN (SELECT MAX(FCCDHIS.T_STMP_UPD) as T_STMP_UPD_MAX, DATE(FCCDHIS.T_STMP_UPD) as D_UPD, FCCDHIS.I_CUST, LTRIM(RTRIM(FCCDHIS.C_FRNCHZ_SET)) as C_FRNCHZ_SET FROM N_DB_APP_EDW_DEV.SCM.F_FCCDHIS as FCCDHIS GROUP BY DATE(FCCDHIS.T_STMP_UPD), FCCDHIS.I_CUST, LTRIM(RTRIM(FCCDHIS.C_FRNCHZ_SET))) LATEST_HIST WHERE DATE(FCCDHIS.T_STMP_UPD) >= 'DSHASHJPDATEDSHASH' AND FCCDHIS.T_STMP_UPD= LATEST_HIST.T_STMP_UPD_MAX AND FCCDHIS.I_CUST= LATEST_HIST.I_CUST AND FCCDHIS.C_FRNCHZ_SET= LATEST_HIST.C_FRNCHZ_SET ORDER BY FCCDHIS.I_CUST, DATE ( FCCDHIS.T_STMP_UPD ), FCCDHIS.T_STMP_UPD DESC WITH UR)
+ ),
+
+SRC_SQL_BANK_FCCINSTOut as (
+	/* SubQuery from Source ==>SRC_SQL_BANK_FCCINST */
+Select 
+ * 
+ from 
+(SELECT distinct FCCINST.I_BUS, LTRIM(RTRIM(FCCINST.I_FININ_ABA)) as I_BANK_ABA, LTRIM(RTRIM(PBUSADD.X_LINE_1)) as X_LINE_1 FROM N_DB_APP_EDW_DEV.SCM.F_FCCINST as FCCINST LEFT OUTER JOIN P.PBUSADD as PBUSADD ON FCCINST.I_BUS= PBUSADD.I_BUS WHERE FCCINST.I_FININ_ABA NOT LIKE '00000%' WITH UR)
+ ),
+
+W_DLRCRDT_DEALERBANK_LKPOut as (
+	/* SubQuery from Source ==>W_DLRCRDT_DEALERBANK_LKP */
+Select 
+ * 
+ from 
+(SELECT I_BANK as I_BANK, I_BUS as I_BUS, C_DLR_DIV as C_DLR_DIV, N_PERSN_CNTCT as N_PERSN_CNTCT, T_STMP_UPD as T_STMP_UPD, D_SRCE_UPD as D_SRCE_UPD, D_EFFCTV_STRT as D_EFFCTV_STRT, D_EFFCTV_END as D_EFFCTV_END, I_AREA as I_AREA, I_PH as I_PH FROM N_DB_APP_EDW_DEV.SCM.DLRCRDT_DEALERBANK WHERE D_EFFCTV_END= '12/31/9999' WITH UR)
+ ),
+
+XFR_SRC_DLRBANKOut as (
+	
+Select 
+StgNewCust as StgOldCust,
+I_BUS as StgNewCust,
+StgNewDate as StgOldDate,
+I_BUS || D_SRCE_UPD as StgNewDate,
+StgNewDlrDiv as StgOldDlrDiv,
+TRIM ( C_FRNCHZ_SET ) as StgNewDlrDiv,
+StgPass as StgOldPass,
+( CASE WHEN StgNewDate = StgOldDate THEN ( ( CASE WHEN StgOldPass = 1 THEN StgOldPass = 1 ELSE if TRIM ( StgNewDlrDiv ) = '' 0 ELSE 1 ) ELSE 0 END ) ) END ) Else 1 as StgPass,
+( CASE WHEN StgNewCust = StgOldCust THEN StgNewCust = StgOldCust ELSE StgRank + 1 ELSE StgRank ) END ) Else 1 as StgRank,
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+I_BANK_ABA as I_BANK_ABA,
+C_FINC_SRCE_PRMRY as C_FINC_SRCE_PRMRY,
+X_ADDR_LINE_1_BANK as X_ADDR_LINE_1_BANK,
+TRIM ( N_PERSN_CNTCT ) as N_PERSN_CNTCT,
+TRIM ( I_AREA ) as I_AREA,
+TRIM ( I_PH ) as I_PH,
+TRIM ( C_FRNCHZ_SET ) as C_FRNCHZ_SET,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+StgRank as Rank
+From O_SRC_DEALERBANKOut as O_SRC_DEALERBANKOut),
+
+XFR_SRC_DLRBANK_Filter1Out as (
+	Select 
+	I_BANK,
+	 I_BUS,
+	 I_BANK_ABA,
+	 C_FINC_SRCE_PRMRY,
+	 X_ADDR_LINE_1_BANK,
+	 trim ( N_PERSN_CNTCT ),
+	 trim ( I_AREA ),
+	 trim ( I_PH ),
+	 trim ( C_FRNCHZ_SET ),
+	 T_STMP_UPD,
+	 D_SRCE_UPD,
+	 StgRank 
+From XFR_SRC_DLRBANKOut as XFR_SRC_DLRBANKOut Where StgPass = 1),
+
+Xfr_dlrbank_lkp1_2Out as (
+	
+Select 
+I_BANK as I_BANK_2,
+I_BUS as I_BUS_2,
+TRIM ( C_DLR_DIV ) as C_DLR_DIV_2,
+D_EFFCTV_STRT as D_EFFCTV_STRT_2,
+D_EFFCTV_END as D_EFFCTV_END_2,
+TRIM ( N_PERSN_CNTCT ) as N_PERSN_CNTCT_2,
+TRIM ( I_AREA ) as I_AREA_2,
+TRIM ( I_PH ) as I_PH_2 
+From W_DLRCRDT_DEALERBANK_LKPOut1 as W_DLRCRDT_DEALERBANK_LKPOut1 Where D_EFFCTV_END = '9999-12-31'),
+
+Xfr_dlrbank_lkp2_2Out as (
+	
+Select 
+I_BANK as I_BANK_4,
+I_BUS as I_BUS_4,
+TRIM ( C_DLR_DIV ) as C_DLR_DIV_4,
+D_EFFCTV_STRT as D_EFFCTV_STRT_4,
+D_EFFCTV_END as D_EFFCTV_END_4,
+TRIM ( N_PERSN_CNTCT ) as N_PERSN_CNTCT_4,
+TRIM ( I_AREA ) as I_AREA_4,
+TRIM ( I_PH ) as I_PH_4,
+T_STMP_UPD as T_STMP_UPD_4 
+From W_DLRCRDT_DEALERBANK_LKPOut2 as W_DLRCRDT_DEALERBANK_LKPOut2 Where D_EFFCTV_END = '9999-12-31'),
+
+Xfr_dlrbank_lkp3_2Out as (
+	
+Select 
+I_BANK as I_BANK_5,
+I_BUS as I_BUS_5,
+TRIM ( C_DLR_DIV ) as C_DLR_DIV_5,
+D_EFFCTV_STRT as D_EFFCTV_STRT_5,
+D_EFFCTV_END as D_EFFCTV_END_5,
+TRIM ( N_PERSN_CNTCT ) as N_PERSN_CNTCT_5,
+TRIM ( I_AREA ) as I_AREA_5,
+TRIM ( I_PH ) as I_PH_5,
+T_STMP_UPD as T_STMP_UPD_5 
+From W_DLRCRDT_DEALERBANK_LKPOut as W_DLRCRDT_DEALERBANK_LKPOut Where D_EFFCTV_END = '9999-12-31'),
+
+LKP_BANK_DATAOut as (
+	Select 
+	XFR_SRC_DLRBANK.I_BANK as I_BANK_1,
+	 XFR_SRC_DLRBANK.I_BUS as I_BUS_1,
+	 XFR_SRC_DLRBANK.I_BANK_ABA as I_BANK_ABA_1,
+	 XFR_SRC_DLRBANK.X_ADDR_LINE_1_BANK as X_ADDR_LINE_1_BANK_1,
+	 XFR_SRC_DLRBANK.C_FINC_SRCE_PRMRY as C_FINC_SRCE_PRMRY_1,
+	 XFR_SRC_DLRBANK.N_PERSN_CNTCT as N_PERSN_CNTCT_1,
+	 XFR_SRC_DLRBANK.I_AREA as I_AREA_1,
+	 XFR_SRC_DLRBANK.I_PH as I_PH_1,
+	 XFR_SRC_DLRBANK.C_FRNCHZ_SET as C_FRNCHZ_SET_1,
+	 XFR_SRC_DLRBANK.T_STMP_UPD as T_STMP_UPD_1,
+	 XFR_SRC_DLRBANK.D_SRCE_UPD as D_SRCE_UPD_1,
+	 XFR_SRC_DLRBANK.Rank as Rank_1,
+	 SRC_SQL_BANK_FCCINSTOut.I_BUS_1 as I_BANK_1,
+	 SRC_SQL_BANK_FCCINSTOut.I_BUS_2 as I_BANK_2_1,
+	 XFR_SRC_DLRBANK_Filter1.I_BUS AS I_BUS_2,
+	 XFR_SRC_DLRBANK_Filter1.C_FRNCHZ_SET AS C_FRNCHZ_SET_2,
+	 XFR_SRC_DLRBANK_Filter1.C_FINC_SRCE_PRMRY AS C_FINC_SRCE_PRMRY_2,
+	 XFR_SRC_DLRBANK_Filter1.Rank AS Rank_2,
+	 XFR_SRC_DLRBANK_Filter1.I_PH AS I_PH_2,
+	 SRC_SQL_BANK_FCCINST.X_LINE_1 AS X_LINE_1,
+	 XFR_SRC_DLRBANK_Filter1.I_AREA AS I_AREA_2,
+	 SRC_SQL_BANK_FCCINST.I_BUS_1 AS I_BUS_1,
+	 SRC_SQL_BANK_FCCINST.I_BANK_ABA AS I_BANK_ABA_2,
+	 SRC_SQL_BANK_FCCINST.I_BUS_2 AS I_BUS_2,
+	 XFR_SRC_DLRBANK_Filter1.X_ADDR_LINE_1_BANK AS X_ADDR_LINE_1_BANK_2,
+	 XFR_SRC_DLRBANK_Filter1.T_STMP_UPD AS T_STMP_UPD_2,
+	 XFR_SRC_DLRBANK.I_BANK AS I_BANK_2_2,
+	 XFR_SRC_DLRBANK_Filter1.I_BANK_ABA AS I_BANK_ABA_3,
+	 XFR_SRC_DLRBANK_Filter1.N_PERSN_CNTCT AS N_PERSN_CNTCT_2,
+	 XFR_SRC_DLRBANK_Filter1.D_SRCE_UPD AS D_SRCE_UPD_2,
+	 XFR_SRC_DLRBANK_Filter1.I_BANK AS I_BANK_2 
+FROM
+	XFR_SRC_DLRBANK_Filter1Out as XFR_SRC_DLRBANK_Filter1Out 
+ LEFT JOIN SRC_SQL_BANK_FCCINSTOut
+ON
+	I_BANK_ABA = I_BANK_ABA
+	AND X_ADDR_LINE_1_BANK = X_LINE_1
+ 
+),
+
+DSstgVar_XFR_CHK_BANK_NULLOut as (
+	
+Select 
+CASE WHEN TRIM ( C_FINC_SRCE_PRMRY ) = 'FINCO' THEN TRIM ( C_FINC_SRCE_PRMRY ) = 'FINCO' ELSE COALESCE ( I_BANK_1 ) ) ) Else I_BANK END as StgBank,
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+I_BANK_ABA as I_BANK_ABA,
+X_ADDR_LINE_1_BANK as X_ADDR_LINE_1_BANK,
+C_FINC_SRCE_PRMRY as C_FINC_SRCE_PRMRY,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+I_AREA as I_AREA,
+I_PH as I_PH,
+C_FRNCHZ_SET as C_FRNCHZ_SET,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+Rank as Rank,
+I_BUS_1 as I_BANK_1,
+I_BUS_2 as I_BANK_2
+From LKP_BANK_DATAOut as LKP_BANK_DATAOut),
+
+Xfr_dlrbank_out1Out as (
+	
+Select 
+StgBank as I_BANK,
+I_BUS as I_BUS,
+I_BANK_ABA as I_BANK_ABA,
+TRIM ( N_PERSN_CNTCT ) as N_PERSN_CNTCT,
+TRIM ( I_AREA ) as I_AREA,
+TRIM ( I_PH ) as I_PH,
+TRIM ( C_FRNCHZ_SET ) as C_DLR_DIV,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+Rank as Rank 
+From DSstgVar_XFR_CHK_BANK_NULLOut1 as DSstgVar_XFR_CHK_BANK_NULLOut1 Where StgBank  !=  0),
+
+XFR_SRC_DLRBANK1Out as (
+	
+Select 
+StgNewCust as StgOldCust,
+I_BUS as StgNewCust,
+StgNewDate as StgOldDate,
+I_BUS || D_SRCE_UPD as StgNewDate,
+'|' || TRIM ( C_DLR_DIV ) || TRIM ( I_BANK ) || TRIM ( N_PERSN_CNTCT ) || TRIM ( I_AREA ) || TRIM ( I_PH ) || '|' as StgRec,
+CASE WHEN StgNewCust = StgOldCust THEN StgNewCust = StgOldCust ELSE StgPassRec ELSE '' END as StgPassRec,
+StgNewRec as StgOldRec,
+CASE WHEN StgOldDate = StgNewDate THEN StgOldRec || ',
+	' || StgRec ELSE StgRec END as StgNewRec,
+CASE WHEN CHARINDEX ( StgRec,
+StgPassRec ) = 0 THEN 1 ELSE 0 END as StgPass1,
+CASE WHEN StgNewDate = StgOldDate THEN StgOldPass1 + StgPass1 ELSE StgPass1 END as StgOldPass1,
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+C_DLR_DIV as C_DLR_DIV,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+I_AREA as I_AREA,
+I_PH as I_PH,
+D_SRCE_UPD as D_SRCE_UPD,
+T_STMP_UPD as T_STMP_UPD
+From Xfr_dlrbank_out1Out as Xfr_dlrbank_out1Out),
+
+LKP_DLRBANKOut as (
+	Select 
+	XFR_SRC_DLRBANK1Out.I_BANK as I_BANK_1,
+	 XFR_SRC_DLRBANK1Out.I_BUS as I_BUS_1,
+	 XFR_SRC_DLRBANK1Out.C_DLR_DIV as C_DLR_DIV_1,
+	 XFR_SRC_DLRBANK1Out.N_PERSN_CNTCT as N_PERSN_CNTCT_1,
+	 XFR_SRC_DLRBANK1Out.I_AREA as I_AREA_1,
+	 XFR_SRC_DLRBANK1Out.I_PH as I_PH_1,
+	 XFR_SRC_DLRBANK1Out.T_STMP_UPD as T_STMP_UPD_1,
+	 XFR_SRC_DLRBANK1Out.D_SRCE_UPD as D_SRCE_UPD_1,
+	 XFR_SRC_DLRBANK1Out.StgPass1 as StgPass1_1,
+	 XFR_DLRBANK_LKP.D_EFFCTV_STRT_2 as D_EFFCTV_STRT_2_1,
+	 XFR_DLRBANK_LKP.I_BUS_4 as I_BUS_4_1,
+	 XFR_DLRBANK_LKP.D_EFFCTV_STRT_4 as D_EFFCTV_STRT_4_1,
+	 XFR_DLRBANK_LKP.T_STMP_UPD_4 as T_STMP_UPD_4_1,
+	 XFR_DLRBANK_LKP.D_EFFCTV_STRT_5 as D_EFFCTV_STRT_5_1,
+	 XFR_SRC_DLRBANK1.I_BANK AS I_BANK_2,
+	 Xfr_dlrbank_lkp3_2.D_EFFCTV_END_5 AS D_EFFCTV_END_5,
+	 Xfr_dlrbank_lkp3_2.C_DLR_DIV_5 AS C_DLR_DIV_5,
+	 XFR_SRC_DLRBANK1.StgOldCust AS StgOldCust,
+	 Xfr_dlrbank_lkp3_2.D_EFFCTV_STRT_5 AS D_EFFCTV_STRT_5_2,
+	 XFR_SRC_DLRBANK1.StgNewCust AS StgNewCust,
+	 Xfr_dlrbank_lkp3_2.I_AREA_5 AS I_AREA_5,
+	 XFR_SRC_DLRBANK1.StgOldPass1 AS StgOldPass1,
+	 Xfr_dlrbank_lkp1_2.I_BANK_2 AS D_EFFCTV_STRT_5_3,
+	 XFR_SRC_DLRBANK1.StgPass1 AS StgPass1_2,
+	 Xfr_dlrbank_lkp1_2.I_BUS_2 AS I_BUS_2,
+	 Xfr_dlrbank_lkp2_2.N_PERSN_CNTCT_4 AS N_PERSN_CNTCT_4,
+	 Xfr_dlrbank_lkp1_2.I_PH_2 AS I_PH_2,
+	 Xfr_dlrbank_lkp1_2.C_DLR_DIV_2 AS C_DLR_DIV_2,
+	 Xfr_dlrbank_lkp2_2.I_PH_4 AS I_PH_4,
+	 XFR_SRC_DLRBANK1.I_AREA AS I_AREA_2,
+	 XFR_SRC_DLRBANK1.StgRec AS StgRec,
+	 XFR_SRC_DLRBANK1.StgNewRec AS StgNewRec,
+	 Xfr_dlrbank_lkp3_2.T_STMP_UPD_5 AS T_STMP_UPD_5,
+	 XFR_SRC_DLRBANK1.T_STMP_UPD AS T_STMP_UPD_2,
+	 Xfr_dlrbank_lkp3_2.I_BUS_5 AS I_BUS_5,
+	 Xfr_dlrbank_lkp1_2.N_PERSN_CNTCT_2 AS N_PERSN_CNTCT_2,
+	 XFR_SRC_DLRBANK1.D_SRCE_UPD AS D_SRCE_UPD_2,
+	 Xfr_dlrbank_lkp2_2.I_BUS_4 AS I_BUS_4_2,
+	 XFR_SRC_DLRBANK1.StgNewDate AS StgNewDate,
+	 XFR_SRC_DLRBANK1.StgOldRec AS StgOldRec,
+	 Xfr_dlrbank_lkp1_2.I_AREA_2 AS I_AREA_2,
+	 Xfr_dlrbank_lkp1_2.D_EFFCTV_END_2 AS D_EFFCTV_END_2,
+	 XFR_SRC_DLRBANK1.StgOldDate AS StgOldDate,
+	 Xfr_dlrbank_lkp2_2.T_STMP_UPD_4 AS T_STMP_UPD_4_2,
+	 XFR_SRC_DLRBANK1.I_PH AS I_PH_2,
+	 XFR_SRC_DLRBANK1.StgPassRec AS StgPassRec,
+	 XFR_SRC_DLRBANK1.C_DLR_DIV AS C_DLR_DIV_2,
+	 Xfr_dlrbank_lkp3_2.I_BANK_5 AS I_BANK_5,
+	 Xfr_dlrbank_lkp2_2.D_EFFCTV_STRT_4 AS D_EFFCTV_STRT_4_2,
+	 Xfr_dlrbank_lkp2_2.C_DLR_DIV_4 AS C_DLR_DIV_4,
+	 Xfr_dlrbank_lkp2_2.I_AREA_4 AS I_AREA_4,
+	 Xfr_dlrbank_lkp2_2.D_EFFCTV_END_4 AS D_EFFCTV_END_4,
+	 Xfr_dlrbank_lkp3_2.N_PERSN_CNTCT_5 AS N_PERSN_CNTCT_5,
+	 Xfr_dlrbank_lkp3_2.I_PH_5 AS I_PH_5,
+	 XFR_SRC_DLRBANK1.I_BUS AS I_BUS_2,
+	 Xfr_dlrbank_lkp2_2.I_BANK_4 AS I_BANK_4,
+	 XFR_SRC_DLRBANK1.N_PERSN_CNTCT AS N_PERSN_CNTCT_2,
+	 Xfr_dlrbank_lkp1_2.D_EFFCTV_STRT_2 AS D_EFFCTV_STRT_2_2 
+FROM
+	XFR_SRC_DLRBANK1Out as XFR_SRC_DLRBANK1Out 
+ LEFT JOIN XFR_DLRBANK_LKPOut
+ON
+	I_BANK = I_BANK_2
+	AND I_BUS = I_BUS_2
+	AND C_DLR_DIV = C_DLR_DIV_2
+	AND N_PERSN_CNTCT = N_PERSN_CNTCT_2
+	AND I_AREA = I_AREA_2
+	AND I_PH = I_PH_2
+ 
+),
+
+DSstgVar_XFR_DLRBANK_1Out as (
+	
+Select 
+StgBus as StgOldBus,
+I_BUS as StgBus,
+CASE WHEN StgBus = StgOldBus THEN StgDel ds ELSE ( CASE WHEN I_BUS_4 IS NULL = 0 THEN 1 ELSE 0 END ) END as StgDel,
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+C_DLR_DIV as C_DLR_DIV,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+I_AREA as I_AREA,
+I_PH as I_PH,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+StgPass1 as StgPass1,
+D_EFFCTV_STRT_2 as D_EFFCTV_STRT_2,
+I_BUS_4 as I_BUS_4,
+D_EFFCTV_STRT_4 as D_EFFCTV_STRT_4,
+T_STMP_UPD_4 as T_STMP_UPD_4,
+D_EFFCTV_STRT_5 as D_EFFCTV_STRT_5
+From LKP_DLRBANKOut as LKP_DLRBANKOut),
+
+Xfr_dlrbank_1_outOut as (
+	
+Select 
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+C_DLR_DIV as C_DLR_DIV,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+I_AREA as I_AREA,
+I_PH as I_PH,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+StgPass1 as StgPass1,
+StgDel as StgDel,
+I_BUS_4 as I_BUS_4,
+D_EFFCTV_STRT_2 as D_EFFCTV_STRT_2,
+D_EFFCTV_STRT_5 as D_EFFCTV_STRT_5
+From DSstgVar_XFR_DLRBANK_1Out as DSstgVar_XFR_DLRBANK_1Out),
+
+Xfr_dlrbank_agg_inOut as (
+	
+Select 
+I_BUS as I_BUS,
+D_SRCE_UPD as D_SRCE_UPD,
+StgPass1 as StgPass1,
+CASE WHEN D_EFFCTV_STRT_2 IS NULL = 1 THEN 0 ELSE 1 END as Rank_2
+From DSstgVar_XFR_DLRBANK_1Out as DSstgVar_XFR_DLRBANK_1Out),
+
+AGG_DLRBANK_Out as (
+	 
+ select 
+	Xfr_dlrbank_agg_in.I_BUS as I_BUS_1,
+	 Xfr_dlrbank_agg_in.D_SRCE_UPD as D_SRCE_UPD_1,
+	 MAX ( Xfr_dlrbank_agg_in.StgPass1 ) as StgPass2,
+	 MIN ( Xfr_dlrbank_agg_in.Rank_2 ) as Rank_4
+ from Xfr_dlrbank_agg_inOut
+ group by I_BUS, D_SRCE_UPD
+)
+),
+
+LKP_DLRBANK_AGGOut as (
+Select 
+	AGG_DLRBANKOut.I_BUS_1 as I_BUS_1,
+	 Xfr_dlrbank_1_outOut.I_PH as I_PH,
+	 Xfr_dlrbank_1_outOut.StgDel as StgDel,
+	 Xfr_dlrbank_1_outOut.T_STMP_UPD as T_STMP_UPD,
+	 Xfr_dlrbank_1_outOut.D_SRCE_UPD as D_SRCE_UPD,
+	 AGG_DLRBANKOut.StgPass2 as StgPass2,
+	 Xfr_dlrbank_1_outOut.C_DLR_DIV as C_DLR_DIV,
+	 Xfr_dlrbank_1_outOut.I_BANK as I_BANK,
+	 Xfr_dlrbank_1_outOut.StgPass1 as StgPass1,
+	 AGG_DLRBANKOut.D_SRCE_UPD_1 as D_SRCE_UPD_1,
+	 Xfr_dlrbank_1_outOut.N_PERSN_CNTCT as N_PERSN_CNTCT,
+	 Xfr_dlrbank_1_outOut.I_BUS as I_BUS,
+	 Xfr_dlrbank_1_outOut.D_EFFCTV_STRT_5 as D_EFFCTV_STRT_5,
+	 Xfr_dlrbank_1_outOut.I_BUS_4 as I_BUS_4,
+	 Xfr_dlrbank_1_outOut.D_EFFCTV_STRT_2 as D_EFFCTV_STRT_2,
+	 Xfr_dlrbank_1_outOut.I_AREA as I_AREA,
+	 AGG_DLRBANKOut.Rank_4 as Rank_4 
+From
+AGG_DLRBANKOut as AGG_DLRBANKOut left JOIN AGG_DLRBANKOut as AGG_DLRBANKOut 
+ON
+AGG_DLRBANKOut.I_BUS = Xfr_dlrbank_1_outOut.I_BUS And AGG_DLRBANKOut.D_SRCE_UPD = Xfr_dlrbank_1_outOut.D_SRCE_UPD 
+),
+
+XFR_DLRBANK_2Out as (
+	
+Select 
+StgBus as StgOldBus,
+I_BUS as StgBus,
+CASE WHEN StgBus = StgOldBus AND StgBusPass > 0 THEN 0 ELSE dsnullzero ( Rank_4 ) END as StgRank4,
+( StgRank4 = 0 AND dsnullzero ( StgPass2 ) = 1 ) OR I_BUS_4 IS NULL = 0 as StgPass,
+CASE WHEN StgBus = StgOldBus THEN StgBusPass + StgPass ELSE StgPass END as StgBusPass,
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+C_DLR_DIV as C_DLR_DIV,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+I_AREA as I_AREA,
+I_PH as I_PH,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+StgDel as StgDel,
+I_BUS_4 as I_BUS_4,
+D_EFFCTV_STRT_2 as D_EFFCTV_STRT_2,
+D_EFFCTV_STRT_5 as D_EFFCTV_STRT_5
+From LKP_DLRBANK_AGGOut as LKP_DLRBANK_AGGOut),
+
+XFR_DLRBANK_2_Filter1Out as (
+	Select 
+	I_BANK,
+	 I_BUS,
+	 C_DLR_DIV,
+	 N_PERSN_CNTCT,
+	 I_AREA,
+	 I_PH,
+	 T_STMP_UPD,
+	 D_SRCE_UPD,
+	 StgDel,
+	 I_BUS_4,
+	 D_EFFCTV_STRT_2,
+	 D_EFFCTV_STRT_5 
+From XFR_DLRBANK_2Out as XFR_DLRBANK_2Out Where StgPass = 1),
+
+SORT_DLRBANKOut as (
+	Select 
+	I_BANK,
+	 I_BUS,
+	 C_DLR_DIV,
+	 N_PERSN_CNTCT,
+	 I_AREA,
+	 I_PH,
+	 T_STMP_UPD,
+	 D_SRCE_UPD,
+	 StgDel,
+	 I_BUS_4,
+	 D_EFFCTV_STRT_2,
+	 D_EFFCTV_STRT_5 
+From XFR_DLRBANK_2_Filter1Out as XFR_DLRBANK_2_Filter1Out Order By I_BUS ASC),
+
+DSstgVar_XFR_DLRBANKOut as (
+	
+Select 
+CASE WHEN TRIM ( I_BUS ) = svNEWCMB THEN 'OLD' ELSE 'NEW' END as svNEWOLDCMBF,
+TRIM ( I_BUS ) as svNEWCMB,
+svNEWDate as svOLDDate,
+I_BUS || D_SRCE_UPD as svNEWDate,
+CASE WHEN svNEWOLDCMBF = 'NEW' THEN '9999-12-31' ds ELSE ( CASE WHEN svOLDDate = svNEWDate THEN svENDDT ELSE svNEWEFFDT END ) END as svENDDT,
+D_SRCE_UPD as svNEWEFFDT,
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+C_DLR_DIV as C_DLR_DIV,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+I_AREA as I_AREA,
+I_PH as I_PH,
+T_STMP_UPD as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+StgDel as StgDel,
+I_BUS_4 as I_BUS_4,
+D_EFFCTV_STRT_2 as D_EFFCTV_STRT_2,
+D_EFFCTV_STRT_5 as D_EFFCTV_STRT_5
+From SORT_DLRBANKOut as SORT_DLRBANKOut),
+
+w_dlrcrdt_dlrbank_insOut as (
+	
+Select 
+I_BANK as I_BANK,
+I_BUS as I_BUS,
+C_DLR_DIV as C_DLR_DIV,
+N_PERSN_CNTCT as N_PERSN_CNTCT,
+Current_timestamp ( ) as T_STMP_UPD,
+D_SRCE_UPD as D_SRCE_UPD,
+D_SRCE_UPD as D_EFFCTV_STRT,
+svENDDT as D_EFFCTV_END,
+I_AREA as I_AREA,
+I_PH as I_PH
+From DSstgVar_XFR_DLRBANKOut as DSstgVar_XFR_DLRBANKOut)
+
+
+Select 
+	w_dlrcrdt_dlrbank_insOut.I_PH as I_PH, 
+w_dlrcrdt_dlrbank_insOut.D_EFFCTV_END as D_EFFCTV_END, 
+w_dlrcrdt_dlrbank_insOut.C_DLR_DIV as C_DLR_DIV, 
+w_dlrcrdt_dlrbank_insOut.I_BUS as I_BUS, 
+w_dlrcrdt_dlrbank_insOut.I_BANK as I_BANK, 
+w_dlrcrdt_dlrbank_insOut.I_AREA as I_AREA, 
+w_dlrcrdt_dlrbank_insOut.N_PERSN_CNTCT as N_PERSN_CNTCT, 
+w_dlrcrdt_dlrbank_insOut.D_EFFCTV_STRT as D_EFFCTV_STRT, 
+w_dlrcrdt_dlrbank_insOut.T_STMP_UPD as T_STMP_UPD, 
+w_dlrcrdt_dlrbank_insOut.D_SRCE_UPD as D_SRCE_UPD 
+From w_dlrcrdt_dlrbank_insOut as w_dlrcrdt_dlrbank_insOut
