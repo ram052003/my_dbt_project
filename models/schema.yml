@@ -1,362 +1,84 @@
 version: 2
 
 sources:
-  - name: PS_ODS_SRVCWH_SQL.SS_SRC_SERVICING_DS
+  - name: MFRDBNAME
     tables:
-      - name: LSLOAN00,LSBKCAS00
-      - name: SRC_SS_SRVDSR
-  - name: PS_ODS_SRVCWH_SQL.SS_SVC_DS
+      - name: FCCDHIS
+      - name: FCCINST,PBUSADD
+  - name: WDBNAME
     tables:
-      - name: TBL_PROPERTY,TBL_VALUATION
-  - name: PS_ODS_SRVCWH_SQL.SS_SERVICING_DS
-    tables:
-      - name: REF_ZIP_TO_FIP
-      - name: [LOAN]
-      - name: LOAN_MSG_CD
-  - name: LOAN_NBR_CROSS_REF
-    tables:
-      - name: LOAN_NBR_CROSS_REF
+      - name: DEALERBANK
 
 models:
-  - name: INS_LOAN
+  - name: BANK_NULL_REJ
     description: "Final target model"
     columns:
-      - name: LOAN_KEY
-        description: "LOAN_KEY"
-      - name: BRND_NM
-        description: "BRND_NM"
-      - name: LOAN_TYPE_CD
-        description: "LOAN_TYPE_CD"
-      - name: LOAN_STS_CD
-        description: "LOAN_STS_CD"
-      - name: INVSTR_CD
-        description: "INVSTR_CD"
-      - name: POOL_ID
-        description: "POOL_ID"
-      - name: NOTE_RT_PCT
-        description: "NOTE_RT_PCT"
-      - name: NOTE_AMT
-        description: "NOTE_AMT"
-      - name: UPB_AMT
-        description: "UPB_AMT"
-      - name: ESCRW_ADVN_AMT
-        description: "ESCRW_ADVN_AMT"
-      - name: ESCRW_BAL_AMT
-        description: "ESCRW_BAL_AMT"
-      - name: ESCRW_BAL_UNENCB_AMT
-        description: "ESCRW_BAL_UNENCB_AMT"
-      - name: MTH_LATE_CHRG_AMT
-        description: "MTH_LATE_CHRG_AMT"
-      - name: LAST_PYMT_RCV_DT
-        description: "LAST_PYMT_RCV_DT"
-      - name: NXT_PYMT_DUE_DT
-        description: "NXT_PYMT_DUE_DT"
-      - name: LOAN_MTR_DT
-        description: "LOAN_MTR_DT"
-      - name: LAST_ESCRW_ANLS_DT
-        description: "LAST_ESCRW_ANLS_DT"
-      - name: BKPT_IND
-        description: "BKPT_IND"
-      - name: ARM_IND
-        description: "ARM_IND"
-      - name: ESCRW_IND
-        description: "ESCRW_IND"
-      - name: REO_IND
-        description: "REO_IND"
-      - name: HGHR_PRC_MTG_LOAN_IND
-        description: "HGHR_PRC_MTG_LOAN_IND"
-      - name: LATE_CHRG_CD
-        description: "LATE_CHRG_CD"
-      - name: LATE_CHRG_GRACE_PRD_DAY_CNT
-        description: "LATE_CHRG_GRACE_PRD_DAY_CNT"
-      - name: LATE_CHRG_RT_PCT
-        description: "LATE_CHRG_RT_PCT"
-      - name: INT_METH_CD
-        description: "INT_METH_CD"
-      - name: DSCHRG_BKPT_IND
-        description: "DSCHRG_BKPT_IND"
-      - name: PYMT_APPL_PLN_NBR
-        description: "PYMT_APPL_PLN_NBR"
-      - name: WEBSITE_ACCS_ALOW_IND
-        description: "WEBSITE_ACCS_ALOW_IND"
-      - name: PROD_CD
-        description: "PROD_CD"
-      - name: LATE_CHRG_SRC_CD
-        description: "LATE_CHRG_SRC_CD"
-      - name: TOT_ANUL_FEE_BILLED_AMT
-        description: "TOT_ANUL_FEE_BILLED_AMT"
-      - name: FHA_VA_CASE_NBR
-        description: "FHA_VA_CASE_NBR"
-      - name: FHA_CASE_ASGN_DT
-        description: "FHA_CASE_ASGN_DT"
-      - name: MI_PREM_FNCE_IND_CD
-        description: "MI_PREM_FNCE_IND_CD"
-      - name: MI_PREM_RT_PCT
-        description: "MI_PREM_RT_PCT"
-      - name: INVSTR_LOAN_NBR
-        description: "INVSTR_LOAN_NBR"
-      - name: MI_IND
-        description: "MI_IND"
-      - name: LIEN_PSTN
-        description: "LIEN_PSTN"
-      - name: RMN_TERM
-        description: "RMN_TERM"
-      - name: CURR_LTV
-        description: "CURR_LTV"
-      - name: CURR_CLTV
-        description: "CURR_CLTV"
-      - name: Orig_CLTV
-        description: "Orig_CLTV"
-      - name: PROD_CD_DESC
-        description: "PROD_CD_DESC"
-      - name: SECURITIZED_DT
-        description: "SECURITIZED_DT"
-      - name: ESCRW_ORGNL_PYMT
-        description: "ESCRW_ORGNL_PYMT"
-      - name: PAPERLESS_STMT_IND
-        description: "PAPERLESS_STMT_IND"
-      - name: MIN_HZRD_RT_RQR
-        description: "MIN_HZRD_RT_RQR"
-      - name: ESCRW_ADVN_BY_INVSTR
-        description: "ESCRW_ADVN_BY_INVSTR"
-      - name: FRST_PYMT_DUE_DT
-        description: "FRST_PYMT_DUE_DT"
-      - name: BLN_IND
-        description: "BLN_IND"
-      - name: INT_ONLY_IND
-        description: "INT_ONLY_IND"
-      - name: MSA_TXT
-        description: "MSA_TXT"
-      - name: LOAN_ACQ_METH_CD
-        description: "LOAN_ACQ_METH_CD"
-      - name: LOAN_AGE
-        description: "LOAN_AGE"
-      - name: AMZ_TERM
-        description: "AMZ_TERM"
-      - name: GRT_FEE
-        description: "GRT_FEE"
-      - name: LAST_ACTV_DT
-        description: "LAST_ACTV_DT"
-      - name: LAST_DUE_DT
-        description: "LAST_DUE_DT"
-      - name: LSAMS_RFD_CD
-        description: "LSAMS_RFD_CD"
-      - name: MTG_TYPE
-        description: "MTG_TYPE"
-      - name: MTG_INSMT
-        description: "MTG_INSMT"
-      - name: MTH_PAST_DUE
-        description: "MTH_PAST_DUE"
-      - name: NON_SFCNT_FUND_CHRG_AMT
-        description: "NON_SFCNT_FUND_CHRG_AMT"
-      - name: SRVC_FEE_AMT
-        description: "SRVC_FEE_AMT"
-      - name: YR_TO_DT_WHLD
-        description: "YR_TO_DT_WHLD"
-      - name: INT_ONLY_TERM
-        description: "INT_ONLY_TERM"
-      - name: STOP_ADVN_FLG
-        description: "STOP_ADVN_FLG"
-      - name: WI_TAX_OPT
-        description: "WI_TAX_OPT"
-      - name: AUD_CRE_BY_NM
-        description: "AUD_CRE_BY_NM"
-      - name: TOT_ADVN_BAL_AMT
-        description: "TOT_ADVN_BAL_AMT"
-      - name: FLOOD_INS_RQR_FLG
-        description: "FLOOD_INS_RQR_FLG"
-      - name: INVSTR_POOL_NBR
-        description: "INVSTR_POOL_NBR"
-      - name: MI_PCT_CVR_AMT
-        description: "MI_PCT_CVR_AMT"
-      - name: AUD_CRE_DTTM
-        description: "AUD_CRE_DTTM"
-      - name: SOR_CD
-        description: "SOR_CD"
-      - name: UNQ_KEY_TXT
-        description: "UNQ_KEY_TXT"
-      - name: FRCLS_IND
-        description: "FRCLS_IND"
-      - name: LOAN_TYPE_IND
-        description: "LOAN_TYPE_IND"
-      - name: MIN_MERS_NBR
-        description: "MIN_MERS_NBR"
-      - name: RGST_WITH_MERS_FLG
-        description: "RGST_WITH_MERS_FLG"
-      - name: NEG_AMZ_IND
-        description: "NEG_AMZ_IND"
-      - name: CNSMR_LOAN_FLG
-        description: "CNSMR_LOAN_FLG"
-  - name: UPD_LOAN
+      - name: I_BANK
+        description: "I_BANK"
+      - name: I_BUS
+        description: "I_BUS"
+      - name: I_BANK_ABA
+        description: "I_BANK_ABA"
+      - name: C_FINC_SRCE_PRMRY
+        description: "C_FINC_SRCE_PRMRY"
+      - name: N_PERSN_CNTCT
+        description: "N_PERSN_CNTCT"
+      - name: I_AREA
+        description: "I_AREA"
+      - name: I_PH
+        description: "I_PH"
+      - name: C_FRNCHZ_SET
+        description: "C_FRNCHZ_SET"
+      - name: T_STMP_UPD
+        description: "T_STMP_UPD"
+      - name: D_SRCE_UPD
+        description: "D_SRCE_UPD"
+      - name: I_BANK_1
+        description: "I_BANK_1"
+      - name: I_BANK_2
+        description: "I_BANK_2"
+  - name: W_DLRCRDT_DEALERBANK_DEL
     description: "Final target model"
     columns:
-      - name: LOAN_KEY
-        description: "LOAN_KEY"
-      - name: BRND_NM
-        description: "BRND_NM"
-      - name: LOAN_TYPE_CD
-        description: "LOAN_TYPE_CD"
-      - name: LOAN_STS_CD
-        description: "LOAN_STS_CD"
-      - name: INVSTR_CD
-        description: "INVSTR_CD"
-      - name: POOL_ID
-        description: "POOL_ID"
-      - name: NOTE_RT_PCT
-        description: "NOTE_RT_PCT"
-      - name: NOTE_AMT
-        description: "NOTE_AMT"
-      - name: UPB_AMT
-        description: "UPB_AMT"
-      - name: ESCRW_ADVN_AMT
-        description: "ESCRW_ADVN_AMT"
-      - name: ESCRW_BAL_AMT
-        description: "ESCRW_BAL_AMT"
-      - name: ESCRW_BAL_UNENCB_AMT
-        description: "ESCRW_BAL_UNENCB_AMT"
-      - name: MTH_LATE_CHRG_AMT
-        description: "MTH_LATE_CHRG_AMT"
-      - name: LAST_PYMT_RCV_DT
-        description: "LAST_PYMT_RCV_DT"
-      - name: NXT_PYMT_DUE_DT
-        description: "NXT_PYMT_DUE_DT"
-      - name: LOAN_MTR_DT
-        description: "LOAN_MTR_DT"
-      - name: LAST_ESCRW_ANLS_DT
-        description: "LAST_ESCRW_ANLS_DT"
-      - name: BKPT_IND
-        description: "BKPT_IND"
-      - name: ARM_IND
-        description: "ARM_IND"
-      - name: ESCRW_IND
-        description: "ESCRW_IND"
-      - name: REO_IND
-        description: "REO_IND"
-      - name: HGHR_PRC_MTG_LOAN_IND
-        description: "HGHR_PRC_MTG_LOAN_IND"
-      - name: LATE_CHRG_CD
-        description: "LATE_CHRG_CD"
-      - name: LATE_CHRG_GRACE_PRD_DAY_CNT
-        description: "LATE_CHRG_GRACE_PRD_DAY_CNT"
-      - name: LATE_CHRG_RT_PCT
-        description: "LATE_CHRG_RT_PCT"
-      - name: INT_METH_CD
-        description: "INT_METH_CD"
-      - name: DSCHRG_BKPT_IND
-        description: "DSCHRG_BKPT_IND"
-      - name: PYMT_APPL_PLN_NBR
-        description: "PYMT_APPL_PLN_NBR"
-      - name: WEBSITE_ACCS_ALOW_IND
-        description: "WEBSITE_ACCS_ALOW_IND"
-      - name: PROD_CD
-        description: "PROD_CD"
-      - name: LATE_CHRG_SRC_CD
-        description: "LATE_CHRG_SRC_CD"
-      - name: TOT_ANUL_FEE_BILLED_AMT
-        description: "TOT_ANUL_FEE_BILLED_AMT"
-      - name: FHA_VA_CASE_NBR
-        description: "FHA_VA_CASE_NBR"
-      - name: FHA_CASE_ASGN_DT
-        description: "FHA_CASE_ASGN_DT"
-      - name: MI_PREM_FNCE_IND_CD
-        description: "MI_PREM_FNCE_IND_CD"
-      - name: MI_PREM_RT_PCT
-        description: "MI_PREM_RT_PCT"
-      - name: INVSTR_LOAN_NBR
-        description: "INVSTR_LOAN_NBR"
-      - name: MI_IND
-        description: "MI_IND"
-      - name: LIEN_PSTN
-        description: "LIEN_PSTN"
-      - name: RMN_TERM
-        description: "RMN_TERM"
-      - name: CURR_LTV
-        description: "CURR_LTV"
-      - name: CURR_CLTV
-        description: "CURR_CLTV"
-      - name: Orig_CLTV
-        description: "Orig_CLTV"
-      - name: PROD_CD_DESC
-        description: "PROD_CD_DESC"
-      - name: SECURITIZED_DT
-        description: "SECURITIZED_DT"
-      - name: ESCRW_ORGNL_PYMT
-        description: "ESCRW_ORGNL_PYMT"
-      - name: PAPERLESS_STMT_IND
-        description: "PAPERLESS_STMT_IND"
-      - name: MIN_HZRD_RT_RQR
-        description: "MIN_HZRD_RT_RQR"
-      - name: ESCRW_ADVN_BY_INVSTR
-        description: "ESCRW_ADVN_BY_INVSTR"
-      - name: FRST_PYMT_DUE_DT
-        description: "FRST_PYMT_DUE_DT"
-      - name: BLN_IND
-        description: "BLN_IND"
-      - name: INT_ONLY_IND
-        description: "INT_ONLY_IND"
-      - name: MSA_TXT
-        description: "MSA_TXT"
-      - name: LOAN_ACQ_METH_CD
-        description: "LOAN_ACQ_METH_CD"
-      - name: LOAN_AGE
-        description: "LOAN_AGE"
-      - name: AMZ_TERM
-        description: "AMZ_TERM"
-      - name: GRT_FEE
-        description: "GRT_FEE"
-      - name: LAST_ACTV_DT
-        description: "LAST_ACTV_DT"
-      - name: LAST_DUE_DT
-        description: "LAST_DUE_DT"
-      - name: LSAMS_RFD_CD
-        description: "LSAMS_RFD_CD"
-      - name: MTG_INSMT
-        description: "MTG_INSMT"
-      - name: MTG_TYPE
-        description: "MTG_TYPE"
-      - name: MTH_PAST_DUE
-        description: "MTH_PAST_DUE"
-      - name: NON_SFCNT_FUND_CHRG_AMT
-        description: "NON_SFCNT_FUND_CHRG_AMT"
-      - name: SRVC_FEE_AMT
-        description: "SRVC_FEE_AMT"
-      - name: YR_TO_DT_WHLD
-        description: "YR_TO_DT_WHLD"
-      - name: INT_ONLY_TERM
-        description: "INT_ONLY_TERM"
-      - name: STOP_ADVN_FLG
-        description: "STOP_ADVN_FLG"
-      - name: TOT_ADVN_BAL_AMT
-        description: "TOT_ADVN_BAL_AMT"
-      - name: WI_TAX_OPT
-        description: "WI_TAX_OPT"
-      - name: FLOOD_INS_RQR_FLG
-        description: "FLOOD_INS_RQR_FLG"
-      - name: INVSTR_POOL_NBR
-        description: "INVSTR_POOL_NBR"
-      - name: LOAN_TYPE_IND
-        description: "LOAN_TYPE_IND"
-      - name: MI_PCT_CVR_AMT
-        description: "MI_PCT_CVR_AMT"
-      - name: AUD_CRE_BY_NM
-        description: "AUD_CRE_BY_NM"
-      - name: AUD_CRE_DTTM
-        description: "AUD_CRE_DTTM"
-      - name: AUD_UPD_BY_NM
-        description: "AUD_UPD_BY_NM"
-      - name: AUD_UPD_DTTM
-        description: "AUD_UPD_DTTM"
-      - name: UNQ_KEY_TXT
-        description: "UNQ_KEY_TXT"
-      - name: SOR_CD
-        description: "SOR_CD"
-      - name: FRCLS_IND
-        description: "FRCLS_IND"
-      - name: MIN_MERS_NBR
-        description: "MIN_MERS_NBR"
-      - name: RGST_WITH_MERS_FLG
-        description: "RGST_WITH_MERS_FLG"
-      - name: NEG_AMZ_IND
-        description: "NEG_AMZ_IND"
-      - name: CNSMR_LOAN_FLG
-        description: "CNSMR_LOAN_FLG"
+      - name: I_BUS
+        description: "I_BUS"
+      - name: T_STMP_UPD
+        description: "T_STMP_UPD"
+      - name: D_EFFCTV_STRT
+        description: "D_EFFCTV_STRT"
+      - name: D_EFFCTV_END
+        description: "D_EFFCTV_END"
+  - name: W_DLRCRDT_DEALERBANK_INS
+    description: "Final target model"
+    columns:
+      - name: I_BANK
+        description: "I_BANK"
+      - name: I_BUS
+        description: "I_BUS"
+      - name: C_DLR_DIV
+        description: "C_DLR_DIV"
+      - name: N_PERSN_CNTCT
+        description: "N_PERSN_CNTCT"
+      - name: T_STMP_UPD
+        description: "T_STMP_UPD"
+      - name: D_SRCE_UPD
+        description: "D_SRCE_UPD"
+      - name: D_EFFCTV_STRT
+        description: "D_EFFCTV_STRT"
+      - name: D_EFFCTV_END
+        description: "D_EFFCTV_END"
+      - name: I_AREA
+        description: "I_AREA"
+      - name: I_PH
+        description: "I_PH"
+  - name: W_DLRCRDT_DLRBANK_UPD
+    description: "Final target model"
+    columns:
+      - name: I_BUS
+        description: "I_BUS"
+      - name: T_STMP_UPD
+        description: "T_STMP_UPD"
+      - name: D_EFFCTV_STRT
+        description: "D_EFFCTV_STRT"
+      - name: D_EFFCTV_END
+        description: "D_EFFCTV_END"
