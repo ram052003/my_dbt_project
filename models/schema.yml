@@ -1,9 +1,12 @@
 version: 2
 
 sources:
-  - name: tDBInput_1
-    tables:
-      - name: tDBInput_1
   - name: tFileInputDelimited_1
     tables:
-      - name: StringHandling.DOWNCASE({{ VARC_LocalFolder_tmpprocessing }}+/+{{ VARC_JobName_JOB_CuratedToConformed_LOAD_USDH_ACBSTor_ObligationAccount_Dim }}+/hashcode+{{ VARC_ConformedZone_ObligAccount_Dim }}+.+{{ VARC_FileExtension }})
+      - name: {{ VARC_CuratedZone_CommitmentDaily_delta }}
+  - name: tFileInputDelimited_2
+    tables:
+      - name: {{ VARC_CuratedZone_ObligationDaily_delta }}
+  - name: tFileInputDelimited_3
+    tables:
+      - name: {{ VARC_CuratedZone_CustomerDaily_current }}
