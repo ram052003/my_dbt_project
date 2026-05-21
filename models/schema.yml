@@ -1,10 +1,9 @@
 version: 2
 
 sources:
-  - name: MFRDBNAME
+  - name: tDBInput_1
     tables:
-      - name: FCCDHIS
-      - name: FCCINST,PBUSADD
-  - name: WDBNAME
+      - name: tDBInput_1
+  - name: tFileInputDelimited_1
     tables:
-      - name: DEALERBANK
+      - name: StringHandling.DOWNCASE({{ VARC_LocalFolder_tmpprocessing }}+/+{{ VARC_JobName_JOB_CuratedToConformed_LOAD_USDH_ACBSTor_ObligationAccount_Dim }}+/hashcode+{{ VARC_ConformedZone_ObligAccount_Dim }}+.+{{ VARC_FileExtension }})
