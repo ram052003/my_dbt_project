@@ -1,4 +1,11 @@
-name: s_CommitmentDaily_Delta
+name: m_EMIR_BNK_RR_BNK_CASHFLOWS_FACT
 config-version: 2
 
 vars:
+  TOT_REC_COUNT: 'null'
+  BATCH_BUSINESS_DATE: 'null'
+  SOURCE_NAME: 'null'
+  BATCH_START_DATE: 'null'
+  TARGET_NAME: 'null'
+  BATCH_ID: 0
+  FILE_NAME: 'null'
