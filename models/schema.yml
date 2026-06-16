@@ -1,3 +1,15 @@
 version: 2
 
 sources:
+  - name: ULKP_APP_VAR_CALYPSO_ERR_1
+    tables:
+      - name: APPLICATION_VARIABLES
+  - name: SC_LKP_BATCH_DETAILS_ID_1
+    tables:
+      - name: BATCH_DETAILS
+  - name: FlatFile_catalog_1
+    tables:
+      - name: LCH_CCPDalyConcFlowsRpt_yyymmdd_ltd_dat
+  - name: SC_LKP_ENTITY_DIM_1
+    tables:
+      - name: ENTITY_DIM
