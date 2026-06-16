@@ -1,11 +1,12 @@
-name: m_BOE_INTEROP_LIVE_LOAD
+name: m_LDSA_CONTRACT_DATA_LOAD
 config-version: 2
 
 vars:
   TOT_REC_COUNT: 'null'
-  BATCH_BUSINESS_DATE: 'null'
   SOURCE_NAME: 'null'
   BATCH_START_DATE: 'null'
   TARGET_NAME: 'null'
   BUSINESS_DATE: 'null'
   BATCH_ID: 0
+  FILE_NAME: 'null'
+  SOURCE_NAME_OVERRIDE: 'null'

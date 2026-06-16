@@ -1,18 +1,15 @@
 version: 2
 
 sources:
-  - name: SC_LKP_CALENDAR_DIM_BOE_1
+  - name: ULKP_APP_VAR_LDSA_ERR_1
     tables:
-      - name: CALENDAR_DIM
-  - name: SC_RR_TRIPARTY_COLL_AND_EXP_FACT
+      - name: APPLICATION_VARIABLES
+  - name: FlatFile_catalog_1
     tables:
-      - name: RR_TRIPARTY_COLL_AND_EXP_FACT
-  - name: SC_LKP_BATCH_DETAILS_ID_1
+      - name: LCHSA_ETD_Contract_YYYYmmdd_YYYYmmddHH24miss
+  - name: SC_LKP_BATCH_DETAILS_1
     tables:
       - name: BATCH_DETAILS
-  - name: SC_RR_TRADE_AND_TRANSACTION_FACT
+  - name: SC_LKP_ENTITY_DIM_1
     tables:
-      - name: RR_TRADE_AND_TRANSACTION_FACT
-  - name: SC_RR_POSITIONS_FACT
-    tables:
-      - name: RR_POSITIONS_FACT
+      - name: ENTITY_DIM
