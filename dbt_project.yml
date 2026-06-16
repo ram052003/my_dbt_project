@@ -1,4 +1,11 @@
-name: mplt_DV_PROCESS_ERROR_DETAILS
+name: m_BOE_INTEROP_LIVE_LOAD
 config-version: 2
 
 vars:
+  TOT_REC_COUNT: 'null'
+  BATCH_BUSINESS_DATE: 'null'
+  SOURCE_NAME: 'null'
+  BATCH_START_DATE: 'null'
+  TARGET_NAME: 'null'
+  BUSINESS_DATE: 'null'
+  BATCH_ID: 0
