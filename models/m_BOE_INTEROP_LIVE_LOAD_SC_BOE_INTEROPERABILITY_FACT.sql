@@ -1,3 +1,8 @@
+/*
+Transformation Name ==> SC_BOE_INTEROPERABILITY_FACT
+Transformation Type ==> Target
+*/
+
 {{
     config(
         materialized='incremental',
@@ -10,7 +15,7 @@
 }}
 
 with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
-    /* SubQuery from Source ==>SQ_SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACT */
+    /* SubQuery from Source ==> SQ_SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACT */
     select
         BUSINESS_DATE,
         EXCHANGE,
@@ -53,9 +58,8 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 EXPOSURE_REF,
                 EXPOSURE_CURR_ID
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where
-                BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-                and COLLATERAL_GIVER_SHORT_CODE = 'LCHGIVER'
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+              and COLLATERAL_GIVER_SHORT_CODE = 'LCHGIVER'
         ) a
         inner join (
             select
@@ -64,21 +68,20 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 SECURITY_VALUE,
                 EXPOSURE_REF
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where
-                BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-                and COLLATERAL_GIVER_SHORT_CODE is null
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+              and COLLATERAL_GIVER_SHORT_CODE is null
         ) b
             on a.EXPOSURE_REF = b.EXPOSURE_REF
         inner join dw_mart.currency_dim as c
             on c.ID = a.EXPOSURE_CURR_ID
         inner join application_variables as d
             on a.COLLATERAL_REC_SHORT_CODE = d.STRING_VALUE2
-               and d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-               and 'Y' != (
-                   select STRING_VALUE
-                   from APPLICATION_VARIABLES
-                   where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
-               )
+           and d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
+           and 'Y' != (
+                select STRING_VALUE
+                from APPLICATION_VARIABLES
+                where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
+            )
         union
         select distinct
             date_trunc('DAY', a.BUSINESS_DATE) as BUSINESS_DATE,
@@ -105,9 +108,8 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 EXPOSURE_REF,
                 EXPOSURE_CURR_ID
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where
-                BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-                and COLLATERAL_GIVER_SHORT_CODE = 'LCHGIVER'
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+              and COLLATERAL_GIVER_SHORT_CODE = 'LCHGIVER'
         ) a
         inner join (
             select
@@ -117,21 +119,20 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 EXPOSURE_REF,
                 MARGIN_PERCENT
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where
-                BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-                and COLLATERAL_GIVER_SHORT_CODE is null
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+              and COLLATERAL_GIVER_SHORT_CODE is null
         ) b
             on a.EXPOSURE_REF = b.EXPOSURE_REF
         inner join dw_mart.currency_dim as c
             on c.ID = a.EXPOSURE_CURR_ID
         inner join application_variables as d
             on a.COLLATERAL_REC_SHORT_CODE = d.STRING_VALUE2
-               and d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-               and 'Y' != (
-                   select STRING_VALUE
-                   from APPLICATION_VARIABLES
-                   where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
-               )
+           and d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
+           and 'Y' != (
+                select STRING_VALUE
+                from APPLICATION_VARIABLES
+                where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
+            )
         group by
             date_trunc('DAY', a.BUSINESS_DATE),
             d.STRING_VALUE3,
@@ -143,11 +144,11 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
         union
         select distinct
             date_trunc('DAY', a.BUSINESS_DATE) as BUSINESS_DATE,
-            STRING_VALUE3 as EXCHANGE,
-            STRING_VALUE5 as INTEROP_ID,
-            STRING_VALUE4 as INTEROP_DESC,
-            TRANSACTION_AMT as EXPOSURE_AMT,
-            TRANSACTION_CCY as CURRENCY_MNEMONIC,
+            d.STRING_VALUE3 as EXCHANGE,
+            d.STRING_VALUE5 as INTEROP_ID,
+            d.STRING_VALUE4 as INTEROP_DESC,
+            a.TRANSACTION_AMT as EXPOSURE_AMT,
+            a.TRANSACTION_CCY as CURRENCY_MNEMONIC,
             null as Coll_Type,
             null as FinInstrmId,
             null as issr,
@@ -157,13 +158,12 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
             null as PstHrcutVal_AMT,
             null as PstHrcutVal_CCY,
             'MGIN' as CollRqrmnt
-        from {{ source('reg_rep', 'RR_BNK_TRIPTYALC_INVST_FACT') }} as a
+        from {{ source('reg_rep', 'RR_BNK_TRIPTYALC_INVST_FACT') }} a
         inner join application_variables as d
             on a.MNEMONIC = d.STRING_VALUE
-        where
-            d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-            and BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-            and 'Y' = (
+        where d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
+          and a.BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+          and 'Y' = (
                 select STRING_VALUE
                 from APPLICATION_VARIABLES
                 where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
@@ -171,27 +171,26 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
         union
         select distinct
             date_trunc('DAY', a.BUSINESS_DATE) as BUSINESS_DATE,
-            STRING_VALUE3 as EXCHANGE,
-            STRING_VALUE5 as INTEROP_ID,
-            STRING_VALUE4 as INTEROP_DESC,
+            d.STRING_VALUE3 as EXCHANGE,
+            d.STRING_VALUE5 as INTEROP_ID,
+            d.STRING_VALUE4 as INTEROP_DESC,
             null as EXPOSURE_AMT,
             null as CURRENCY_MNEMONIC,
-            COLLATERAL_GROUP as Coll_Type,
+            a.COLLATERAL_GROUP as Coll_Type,
             to_varchar(a.ISIN) as FinInstrmId,
             '00000000000000000000' as issr,
-            TRANSACTION_AMT as Trpty_MktVal_AMT,
-            TRANSACTION_CCY as Trpty_MktVal_CCY,
-            PRE_HC_MV_TX_CCY_AMT as MktVal_AMT,
-            POST_HC_MV_TX_CCY_AMT as PstHrcutVal_AMT,
-            TRANSACTION_CCY as PstHrcutVal_CCY,
+            a.TRANSACTION_AMT as Trpty_MktVal_AMT,
+            a.TRANSACTION_CCY as Trpty_MktVal_CCY,
+            a.PRE_HC_MV_TX_CCY_AMT as MktVal_AMT,
+            a.POST_HC_MV_TX_CCY_AMT as PstHrcutVal_AMT,
+            a.TRANSACTION_CCY as PstHrcutVal_CCY,
             'MGIN' as CollRqrmnt
-        from {{ source('reg_rep', 'RR_BNK_TRIPTYALC_INVST_FACT') }} as a
+        from {{ source('reg_rep', 'RR_BNK_TRIPTYALC_INVST_FACT') }} a
         inner join application_variables as d
             on a.MNEMONIC = d.STRING_VALUE
-        where
-            d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-            and BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-            and 'Y' = (
+        where d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
+          and a.BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+          and 'Y' = (
                 select STRING_VALUE
                 from APPLICATION_VARIABLES
                 where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
@@ -200,7 +199,7 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
 ),
 
 SQ_SC_RR_POSITIONS_FACTOut as (
-    /* SubQuery from Source ==>SQ_SQ_SC_RR_POSITIONS_FACT */
+    /* SubQuery from Source ==> SQ_SQ_SC_RR_POSITIONS_FACT */
     select
         NOTIONAL_AMT,
         INTEROP_ID,
@@ -220,23 +219,21 @@ SQ_SC_RR_POSITIONS_FACTOut as (
             application_variables.STRING_VALUE4 as INTEROP_DESC,
             CURRENCY_DIM.CURRENCY_MNEMONIC
         from {{ source('reg_rep', 'RR_POSITIONS_FACT') }}
-        inner join INSTRUMENTS_DIM as INSTRUMENTS_DIM
+        inner join INSTRUMENTS_DIM
             on RR_POSITIONS_FACT.INSTRUMENT_ID = INSTRUMENTS_DIM.ID
-        inner join CURRENCY_DIM as CURRENCY_DIM
+        inner join CURRENCY_DIM
             on RR_POSITIONS_FACT.MARGIN_CURRENCY_ID = CURRENCY_DIM.ID
-        inner join application_variables as application_variables
+        inner join application_variables
             on COUNTERPARTIES_DIM.CLEARING_MEMBER_MNEMONIC = APPLICATION_VARIABLES.STRING_VALUE5
-        where
-            MEMBER_COUNTERPARTY_ID = COUNTERPARTIES_DIM.ID
-            and BUSINESS_DATE_ID = (
-                select distinct
-                    ID
+        inner join COUNTERPARTIES_DIM
+            on RR_POSITIONS_FACT.MEMBER_COUNTERPARTY_ID = COUNTERPARTIES_DIM.ID
+        where BUSINESS_DATE_ID = (
+                select distinct ID
                 from {{ source('dw_mart', 'CALENDAR_DIM') }}
-                where
-                    CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-                    and TYPE = 'LTD_STD'
+                where CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+                  and TYPE = 'LTD_STD'
             )
-            and exchange_id in (
+          and exchange_id in (
                 select id
                 from {{ source('dw_mart', 'exchange_dim') }}
                 where EXCHANGE_MNEMONIC = 'ECL'
@@ -249,7 +246,7 @@ SQ_SC_RR_POSITIONS_FACTOut as (
 ),
 
 SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut as (
-    /* SubQuery from Source ==>SQ_SQ_SC_RR_TRADE_AND_TRANSACTION_FACT */
+    /* SubQuery from Source ==> SQ_SQ_SC_RR_TRADE_AND_TRANSACTION_FACT */
     select
         BUSINESS_DATE_TIME,
         TrdsClrd,
@@ -261,26 +258,23 @@ SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut as (
             round(count(a.ID) / 2) as TrdsClrd,
             d.STRING_VALUE5 as INTEROP_ID,
             d.STRING_VALUE4 as INTEROP_DESC
-        from {{ source('reg_rep', 'RR_TRADE_AND_TRANSACTION_FACT') }} as a
-        inner join COUNTERPARTIES_DIM as b
+        from {{ source('reg_rep', 'RR_TRADE_AND_TRANSACTION_FACT') }} a
+        inner join COUNTERPARTIES_DIM b
             on a.MEMBER_COUNTERPARTY_ID = b.ID
-        inner join application_variables as d
+        inner join application_variables d
             on b.CLEARING_MEMBER_MNEMONIC = d.STRING_VALUE5
-        where
-            d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-            and a.exchange_id in (
+        where d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
+          and a.exchange_id in (
                 select id
                 from {{ source('dw_mart', 'exchange_dim') }}
                 where EXCHANGE_MNEMONIC = 'ECL'
             )
-            and TRADE_ACTION_TYPE = 'NEW'
-            and BUSINESS_DATE_ID = (
-                select distinct
-                    ID
+          and TRADE_ACTION_TYPE = 'NEW'
+          and BUSINESS_DATE_ID = (
+                select distinct ID
                 from {{ source('dw_mart', 'CALENDAR_DIM') }}
-                where
-                    CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
-                    and TYPE = 'LTD_STD'
+                where CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+                  and TYPE = 'LTD_STD'
             )
         group by
             a.BUSINESS_DATE_TIME,
@@ -295,7 +289,7 @@ SQ_SC_RR_POSITIONS_FACT_master as (
         SQ_SC_RR_POSITIONS_FACTOut.INTEROP_ID as INTEROP_ID1,
         SQ_SC_RR_POSITIONS_FACTOut.INTEROP_DESC as INTEROP_DESC1,
         SQ_SC_RR_POSITIONS_FACTOut.CURRENCY_MNEMONIC as CURRENCY_MNEMONIC
-    from SQ_SC_RR_POSITIONS_FACTOut as SQ_SC_RR_POSITIONS_FACTOut
+    from SQ_SC_RR_POSITIONS_FACTOut
 ),
 
 JNR_gross_CLRIDOut as (
@@ -309,8 +303,8 @@ JNR_gross_CLRIDOut as (
         SQ_SC_RR_POSITIONS_FACT_master.INTEROP_DESC1 as INTEROP_DESC1,
         SQ_SC_RR_POSITIONS_FACT_master.CURRENCY_MNEMONIC as CURRENCY_MNEMONIC,
         row_number() over (order by 1) as jkey
-    from SQ_SC_RR_POSITIONS_FACT_master as SQ_SC_RR_POSITIONS_FACT_master
-    inner join SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut as SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut
+    from SQ_SC_RR_POSITIONS_FACT_master
+    inner join SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut
         on SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut.INTEROP_ID = SQ_SC_RR_POSITIONS_FACT_master.INTEROP_ID1
 ),
 
@@ -334,26 +328,7 @@ exp_TTL_SECURITYOut as (
         PstHrcutVal_CCY as PstHrcutVal_CCY,
         CollRqrmnt as CollRqrmnt,
         null as GROSS_NOTIONAL_CURRENCY
-    from SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as SQ_SC_RR_T
+    from SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut
 )
 
-select
-    BUSINESS_DATE,
-    Trdsclrd,
-    EXCHANGE,
-    INTEROP_ID,
-    INTEROP_DESC,
-    EXPOSURE_AMT,
-    CURRENCY_MNEMONIC,
-    Coll_Type,
-    FinInstrmId,
-    issr,
-    Trpty_MktVal_AMT,
-    Trpty_MktVal_CCY,
-    MktVal_AMT,
-    NOTIONAL_AMT,
-    PstHrcutVal_AMT,
-    PstHrcutVal_CCY,
-    CollRqrmnt,
-    GROSS_NOTIONAL_CURRENCY
-from exp_TTL_SECURITYOut;
+/* Additional transformations would follow here */
