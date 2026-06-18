@@ -1,21 +1,18 @@
-/*
-Transformation Name ==> SC_BOE_INTEROPERABILITY_FACT
-Transformation Type ==> Target
-*/
+/ * Transformation Name ==>SC_BOE_INTEROPERABILITY_FACT ,Transformation Type ==>Target * /
 
 {{
     config(
         materialized='incremental',
         alias='BOE_INTEROPERABILITY',
         schema='EMIR_SHARED',
-        pre_hook="",
-        post_hook="",
+        pre_hook=[],
+        post_hook=[],
         incremental_strategy='append'
     )
 }}
 
 with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
-    /* SubQuery from Source ==> SQ_SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACT */
+    /* SubQuery from Source ==>SQ_SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACT */
     select
         BUSINESS_DATE,
         EXCHANGE,
@@ -58,7 +55,7 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 EXPOSURE_REF,
                 EXPOSURE_CURR_ID
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
               and COLLATERAL_GIVER_SHORT_CODE = 'LCHGIVER'
         ) a
         inner join (
@@ -68,21 +65,21 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 SECURITY_VALUE,
                 EXPOSURE_REF
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
               and COLLATERAL_GIVER_SHORT_CODE is null
         ) b
             on a.EXPOSURE_REF = b.EXPOSURE_REF
-        inner join dw_mart.currency_dim as c
+        inner join dw_mart.currency_dim c
             on c.ID = a.EXPOSURE_CURR_ID
-        inner join application_variables as d
+        inner join application_variables d
             on a.COLLATERAL_REC_SHORT_CODE = d.STRING_VALUE2
            and d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
            and 'Y' != (
                 select STRING_VALUE
                 from APPLICATION_VARIABLES
                 where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
-            )
-        union
+           )
+        union all
         select distinct
             date_trunc('DAY', a.BUSINESS_DATE) as BUSINESS_DATE,
             d.STRING_VALUE3 as EXCHANGE,
@@ -108,7 +105,7 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 EXPOSURE_REF,
                 EXPOSURE_CURR_ID
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
               and COLLATERAL_GIVER_SHORT_CODE = 'LCHGIVER'
         ) a
         inner join (
@@ -119,20 +116,20 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
                 EXPOSURE_REF,
                 MARGIN_PERCENT
             from {{ source('reg_rep', 'RR_TRIPARTY_COLL_AND_EXP_FACT') }}
-            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+            where BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
               and COLLATERAL_GIVER_SHORT_CODE is null
         ) b
             on a.EXPOSURE_REF = b.EXPOSURE_REF
-        inner join dw_mart.currency_dim as c
+        inner join dw_mart.currency_dim c
             on c.ID = a.EXPOSURE_CURR_ID
-        inner join application_variables as d
+        inner join application_variables d
             on a.COLLATERAL_REC_SHORT_CODE = d.STRING_VALUE2
            and d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
            and 'Y' != (
                 select STRING_VALUE
                 from APPLICATION_VARIABLES
                 where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
-            )
+           )
         group by
             date_trunc('DAY', a.BUSINESS_DATE),
             d.STRING_VALUE3,
@@ -141,7 +138,7 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
             b.INSTRUMENT_GROUP,
             to_varchar(b.ISIN),
             c.CURRENCY_MNEMONIC
-        union
+        union all
         select distinct
             date_trunc('DAY', a.BUSINESS_DATE) as BUSINESS_DATE,
             d.STRING_VALUE3 as EXCHANGE,
@@ -159,16 +156,16 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
             null as PstHrcutVal_CCY,
             'MGIN' as CollRqrmnt
         from {{ source('reg_rep', 'RR_BNK_TRIPTYALC_INVST_FACT') }} a
-        inner join application_variables as d
+        inner join application_variables d
             on a.MNEMONIC = d.STRING_VALUE
         where d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-          and a.BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+          and a.BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
           and 'Y' = (
                 select STRING_VALUE
                 from APPLICATION_VARIABLES
                 where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
-            )
-        union
+           )
+        union all
         select distinct
             date_trunc('DAY', a.BUSINESS_DATE) as BUSINESS_DATE,
             d.STRING_VALUE3 as EXCHANGE,
@@ -186,20 +183,20 @@ with SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut as (
             a.TRANSACTION_CCY as PstHrcutVal_CCY,
             'MGIN' as CollRqrmnt
         from {{ source('reg_rep', 'RR_BNK_TRIPTYALC_INVST_FACT') }} a
-        inner join application_variables as d
+        inner join application_variables d
             on a.MNEMONIC = d.STRING_VALUE
         where d.VARIABLE_NAME = 'BOE_INTEROP_MNEMONIC'
-          and a.BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+          and a.BUSINESS_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
           and 'Y' = (
                 select STRING_VALUE
                 from APPLICATION_VARIABLES
                 where VARIABLE_NAME = 'BOE_INTEROP_STRATEGIC_FLAG'
-            )
+           )
     )
 ),
 
 SQ_SC_RR_POSITIONS_FACTOut as (
-    /* SubQuery from Source ==> SQ_SQ_SC_RR_POSITIONS_FACT */
+    /* SubQuery from Source ==>SQ_SQ_SC_RR_POSITIONS_FACT */
     select
         NOTIONAL_AMT,
         INTEROP_ID,
@@ -208,29 +205,27 @@ SQ_SC_RR_POSITIONS_FACTOut as (
     from (
         select
             sum(
-                decode(
-                    nvl(INSTRUMENTS_DIM.SECURITY_TYPE, 'NONTERM'),
-                    'TERM',
-                    abs(MTM_NOTIONAL),
-                    0
-                )
+                case
+                    when coalesce(INSTRUMENTS_DIM.SECURITY_TYPE,'NONTERM') = 'TERM' then abs(MTM_NOTIONAL)
+                    else 0
+                end
             ) as NOTIONAL_AMT,
             application_variables.STRING_VALUE5 as INTEROP_ID,
             application_variables.STRING_VALUE4 as INTEROP_DESC,
             CURRENCY_DIM.CURRENCY_MNEMONIC
-        from {{ source('reg_rep', 'RR_POSITIONS_FACT') }}
+        from {{ source('reg_rep', 'RR_POSITIONS_FACT') }} RR_POSITIONS_FACT
         inner join INSTRUMENTS_DIM
             on RR_POSITIONS_FACT.INSTRUMENT_ID = INSTRUMENTS_DIM.ID
         inner join CURRENCY_DIM
             on RR_POSITIONS_FACT.MARGIN_CURRENCY_ID = CURRENCY_DIM.ID
-        inner join application_variables
-            on COUNTERPARTIES_DIM.CLEARING_MEMBER_MNEMONIC = APPLICATION_VARIABLES.STRING_VALUE5
         inner join COUNTERPARTIES_DIM
             on RR_POSITIONS_FACT.MEMBER_COUNTERPARTY_ID = COUNTERPARTIES_DIM.ID
+        inner join application_variables
+            on COUNTERPARTIES_DIM.CLEARING_MEMBER_MNEMONIC = application_variables.STRING_VALUE5
         where BUSINESS_DATE_ID = (
                 select distinct ID
                 from {{ source('dw_mart', 'CALENDAR_DIM') }}
-                where CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+                where CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
                   and TYPE = 'LTD_STD'
             )
           and exchange_id in (
@@ -246,7 +241,7 @@ SQ_SC_RR_POSITIONS_FACTOut as (
 ),
 
 SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut as (
-    /* SubQuery from Source ==> SQ_SQ_SC_RR_TRADE_AND_TRANSACTION_FACT */
+    /* SubQuery from Source ==>SQ_SQ_SC_RR_TRADE_AND_TRANSACTION_FACT */
     select
         BUSINESS_DATE_TIME,
         TrdsClrd,
@@ -255,7 +250,7 @@ SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut as (
     from (
         select
             a.BUSINESS_DATE_TIME,
-            round(count(a.ID) / 2) as TrdsClrd,
+            round(count(a.ID)/2) as TrdsClrd,
             d.STRING_VALUE5 as INTEROP_ID,
             d.STRING_VALUE4 as INTEROP_DESC
         from {{ source('reg_rep', 'RR_TRADE_AND_TRANSACTION_FACT') }} a
@@ -273,7 +268,7 @@ SQ_SC_RR_TRADE_AND_TRANSACTION_FACTOut as (
           and BUSINESS_DATE_ID = (
                 select distinct ID
                 from {{ source('dw_mart', 'CALENDAR_DIM') }}
-                where CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}', 'YYYYMMDD')
+                where CAL_DATE = to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD')
                   and TYPE = 'LTD_STD'
             )
         group by
@@ -310,25 +305,322 @@ JNR_gross_CLRIDOut as (
 
 exp_TTL_SECURITYOut as (
     select
-        BUSINESS_DATE as BUSINESS_DATE,
+        BUSINESS_DATE,
         null as Trdsclrd,
-        EXCHANGE as EXCHANGE,
-        INTEROP_ID as INTEROP_ID,
-        INTEROP_DESC as INTEROP_DESC,
-        EXPOSURE_AMT as EXPOSURE_AMT,
-        CURRENCY_MNEMONIC as CURRENCY_MNEMONIC,
-        Coll_Type as Coll_Type,
-        FinInstrmId as FinInstrmId,
-        issr as issr,
-        Trpty_MktVal_AMT as Trpty_MktVal_AMT,
-        Trpty_MktVal_CCY as Trpty_MktVal_CCY,
-        MktVal_AMT as MktVal_AMT,
+        EXCHANGE,
+        INTEROP_ID,
+        INTEROP_DESC,
+        EXPOSURE_AMT,
+        CURRENCY_MNEMONIC,
+        Coll_Type,
+        FinInstrmId,
+        issr,
+        Trpty_MktVal_AMT,
+        Trpty_MktVal_CCY,
+        MktVal_AMT,
         null as NOTIONAL_AMT,
-        PstHrcutVal_AMT as PstHrcutVal_AMT,
-        PstHrcutVal_CCY as PstHrcutVal_CCY,
-        CollRqrmnt as CollRqrmnt,
+        PstHrcutVal_AMT,
+        PstHrcutVal_CCY,
+        CollRqrmnt,
         null as GROSS_NOTIONAL_CURRENCY
     from SQ_SC_RR_TRIPARTY_COLL_AND_EXP_FACTOut
+),
+
+DSR_exp_TTL_SECURITY1Out as (
+    select
+        JNR_gross_CLRIDOut.BUSINESS_DATE_TIME as BUSINESS_DATE,
+        JNR_gross_CLRIDOut.TrdsClrd as Trdsclrd,
+        JNR_gross_CLRIDOut.INTEROP_ID as INTEROP_ID,
+        JNR_gross_CLRIDOut.INTEROP_DESC as INTEROP_DESC,
+        JNR_gross_CLRIDOut.NOTIONAL_AMT as NOTIONAL_AMT,
+        JNR_gross_CLRIDOut.CURRENCY_MNEMONIC as CURRENCY_MNEMONIC2
+    from JNR_gross_CLRIDOut
+),
+
+exp_TTL_SECURITY1Out as (
+    select
+        BUSINESS_DATE,
+        Trdsclrd,
+        'ECL' as EXCHANGE,
+        INTEROP_ID,
+        INTEROP_DESC,
+        null as EXPOSURE_AMT,
+        null as CURRENCY_MNEMONIC,
+        null as Coll_Type,
+        null as FinInstrmId,
+        '00000000000000000000' as issr,
+        null as Trpty_MktVal_AMT,
+        null as Trpty_MktVal_CCY,
+        null as MktVal_AMT,
+        NOTIONAL_AMT,
+        null as PstHrcutVal_AMT,
+        CURRENCY_MNEMONIC2,
+        null as CURRENCY_MNEMONIC1,
+        null as PstHrcutVal_CCY,
+        'Margin' as CollRqmnt
+    from DSR_exp_TTL_SECURITY1Out
+),
+
+Union_ALL_DATEOut as (
+    select
+        BUSINESS_DATE,
+        Trdsclrd,
+        EXCHANGE,
+        INTEROP_ID,
+        INTEROP_DESC,
+        EXPOSURE_AMT,
+        CURRENCY_MNEMONIC,
+        Coll_Type,
+        FinInstrmId,
+        issr,
+        Trpty_MktVal_AMT,
+        Trpty_MktVal_CCY,
+        MktVal_AMT,
+        NOTIONAL_AMT,
+        PstHrcutVal_AMT,
+        PstHrcutVal_CCY,
+        CollRqrmnt,
+        GROSS_NOTIONAL_CURRENCY
+    from (
+        select
+            exp_TTL_SECURITYOut.BUSINESS_DATE as BUSINESS_DATE,
+            exp_TTL_SECURITYOut.Trdsclrd,
+            exp_TTL_SECURITYOut.EXCHANGE,
+            exp_TTL_SECURITYOut.INTEROP_ID,
+            exp_TTL_SECURITYOut.INTEROP_DESC,
+            exp_TTL_SECURITYOut.EXPOSURE_AMT,
+            exp_TTL_SECURITYOut.CURRENCY_MNEMONIC,
+            exp_TTL_SECURITYOut.Coll_Type,
+            exp_TTL_SECURITYOut.FinInstrmId,
+            exp_TTL_SECURITYOut.issr,
+            exp_TTL_SECURITYOut.Trpty_MktVal_AMT,
+            exp_TTL_SECURITYOut.Trpty_MktVal_CCY,
+            exp_TTL_SECURITYOut.MktVal_AMT,
+            exp_TTL_SECURITYOut.NOTIONAL_AMT,
+            exp_TTL_SECURITYOut.PstHrcutVal_AMT,
+            exp_TTL_SECURITYOut.PstHrcutVal_CCY,
+            exp_TTL_SECURITYOut.CollRqrmnt,
+            exp_TTL_SECURITYOut.GROSS_NOTIONAL_CURRENCY
+        from exp_TTL_SECURITYOut
+        union all
+        select
+            exp_TTL_SECURITY1Out.BUSINESS_DATE,
+            exp_TTL_SECURITY1Out.Trdsclrd,
+            exp_TTL_SECURITY1Out.EXCHANGE,
+            exp_TTL_SECURITY1Out.INTEROP_ID,
+            exp_TTL_SECURITY1Out.INTEROP_DESC,
+            exp_TTL_SECURITY1Out.EXPOSURE_AMT,
+            exp_TTL_SECURITY1Out.CURRENCY_MNEMONIC,
+            exp_TTL_SECURITY1Out.Coll_Type,
+            exp_TTL_SECURITY1Out.FinInstrmId,
+            exp_TTL_SECURITY1Out.issr,
+            exp_TTL_SECURITY1Out.Trpty_MktVal_AMT,
+            exp_TTL_SECURITY1Out.Trpty_MktVal_CCY,
+            exp_TTL_SECURITY1Out.MktVal_AMT,
+            exp_TTL_SECURITY1Out.NOTIONAL_AMT,
+            exp_TTL_SECURITY1Out.PstHrcutVal_AMT,
+            exp_TTL_SECURITY1Out.CURRENCY_MNEMONIC2 as PstHrcutVal_CCY,
+            exp_TTL_SECURITY1Out.CollRqmnt as CollRqrmnt,
+            exp_TTL_SECURITY1Out.GROSS_NOTIONAL_CURRENCY
+        from exp_TTL_SECURITY1Out
+    )
+),
+
+SC_SEQ_INTEROP1Out as (
+    select
+        Union_ALL_DATEOut.INTEROP_ID,
+        Union_ALL_DATEOut.CURRENCY_MNEMONIC,
+        Union_ALL_DATEOut.EXCHANGE,
+        Union_ALL_DATEOut.GROSS_NOTIONAL_CURRENCY,
+        Union_ALL_DATEOut.Trdsclrd,
+        Union_ALL_DATEOut.FinInstrmId,
+        Union_ALL_DATEOut.Trpty_MktVal_CCY,
+        Union_ALL_DATEOut.PstHrcutVal_AMT,
+        Union_ALL_DATEOut.MktVal_AMT,
+        Union_ALL_DATEOut.issr,
+        Union_ALL_DATEOut.Coll_Type,
+        Union_ALL_DATEOut.NOTIONAL_AMT,
+        Union_ALL_DATEOut.PstHrcutVal_CCY,
+        Union_ALL_DATEOut.Trpty_MktVal_AMT,
+        Union_ALL_DATEOut.EXPOSURE_AMT,
+        Union_ALL_DATEOut.INTEROP_DESC,
+        Union_ALL_DATEOut.CollRqrmnt
+    from Union_ALL_DATEOut
+),
+
+Target_Table_Name_SK_Max_Value as (
+    select max(GENERATED_SEQ) as max_generated_seq
+    from {{ this }}
+),
+
+DSR_EXP_FINAL1Out as (
+    select
+        (select max_generated_seq from Target_Table_Name_SK_Max_Value) + row_number() over () as GENERATED_SEQ,
+        SC_SEQ_INTEROP1Out.Trdsclrd,
+        SC_SEQ_INTEROP1Out.EXCHANGE,
+        SC_SEQ_INTEROP1Out.INTEROP_ID,
+        SC_SEQ_INTEROP1Out.INTEROP_DESC,
+        SC_SEQ_INTEROP1Out.EXPOSURE_AMT,
+        SC_SEQ_INTEROP1Out.CURRENCY_MNEMONIC,
+        SC_SEQ_INTEROP1Out.Coll_Type,
+        SC_SEQ_INTEROP1Out.FinInstrmId,
+        SC_SEQ_INTEROP1Out.issr,
+        SC_SEQ_INTEROP1Out.Trpty_MktVal_AMT,
+        SC_SEQ_INTEROP1Out.Trpty_MktVal_CCY,
+        SC_SEQ_INTEROP1Out.MktVal_AMT,
+        SC_SEQ_INTEROP1Out.NOTIONAL_AMT,
+        SC_SEQ_INTEROP1Out.PstHrcutVal_AMT,
+        SC_SEQ_INTEROP1Out.PstHrcutVal_CCY,
+        SC_SEQ_INTEROP1Out.CollRqrmnt,
+        SC_SEQ_INTEROP1Out.GROSS_NOTIONAL_CURRENCY
+    from SC_SEQ_INTEROP1Out
+),
+
+EXP_FINAL1Out as (
+    select
+        GENERATED_SEQ,
+        lpad(GENERATED_SEQ,9,'0') as v_SEQ_LPAD_TO_9,
+        datediff(
+            'SECOND',
+            to_timestamp('01/01/1970 00:00:00','DD/MM/YYYY HH24:MI:SS'),
+            current_timestamp()
+        ) as v_EPOC_TIME,
+        v_EPOC_TIME || v_SEQ_LPAD_TO_9 as v_CONCATE_ID,
+        v_CONCATE_ID as ID,
+        '{{ var("BATCH_ID") }}' as BATCH_ID,
+        dsf_1.ID as BATCH_DETAILS_ID,
+        date_trunc('DAY', to_date(ltrim(rtrim('{{ var("BATCH_BUSINESS_DATE") }}')),'YYYYMMDD')) as v_BATCH_BUSINESS_DATE,
+        v_BATCH_BUSINESS_DATE as BATCH_BUSINESS_DATE,
+        dsf_2.ID as BUSINESS_DATE_ID,
+        0 + 1 as v_TOT_REC_COUNT,
+        to_date('{{ var("BUSINESS_DATE") }}','YYYYMMDD') as BUSINESS_DATE,
+        Trdsclrd,
+        EXCHANGE,
+        INTEROP_ID,
+        INTEROP_DESC,
+        EXPOSURE_AMT,
+        CURRENCY_MNEMONIC,
+        Coll_Type,
+        FinInstrmId,
+        issr,
+        Trpty_MktVal_AMT,
+        Trpty_MktVal_CCY,
+        MktVal_AMT,
+        NOTIONAL_AMT,
+        PstHrcutVal_AMT,
+        PstHrcutVal_CCY,
+        CollRqrmnt,
+        null as SUBMIT_FLAG,
+        GROSS_NOTIONAL_CURRENCY,
+        0 as ERROR_INDICATOR
+    from DSR_EXP_FINAL1Out
+    left join (
+        select ID, BATCH_ID, TARGET_TABLE_NAME, FILE_NAME
+        from (
+            select
+                ID,
+                BATCH_ID,
+                TARGET_TABLE_NAME,
+                FILE_NAME,
+                row_number() over (partition by BATCH_ID, TARGET_TABLE_NAME, FILE_NAME order by rnk_fst desc nulls last) as rnk_lst
+            from (
+                select
+                    ID,
+                    BATCH_ID,
+                    TARGET_TABLE_NAME,
+                    FILE_NAME,
+                    row_number() over (partition by BATCH_ID, TARGET_TABLE_NAME, FILE_NAME order by BATCH_ID, TARGET_TABLE_NAME, FILE_NAME nulls last) as rnk_fst,
+                    rank() over (partition by batch_id, TARGET_TABLE_NAME, FILE_NAME order by BATCH_DETAILS_START_TIME desc) as RANK,
+                    STATUS,
+                    ACTIVE_FLAG
+                from BATCH_DETAILS
+                where RANK = 1
+                  and STATUS = 'I'
+                  and ACTIVE_FLAG = 1
+            )
+        ) lkp_inner
+        where rnk_lst = 1
+    ) dsf_1
+        on dsf_1.BATCH_ID = '{{ var("BATCH_ID") }}'
+       and dsf_1.TARGET_TABLE_NAME = '{{ var("TARGET_NAME") }}'
+       and dsf_1.FILE_NAME = '{{ var("SOURCE_NAME") }}'
+    left join (
+        select ID, CAL_DATE, TYPE
+        from (
+            select
+                ID,
+                CAL_DATE,
+                TYPE,
+                row_number() over (partition by CAL_DATE, TYPE order by rnk_fst desc nulls last) as rnk_lst
+            from (
+                select
+                    ID,
+                    CAL_DATE,
+                    TYPE,
+                    row_number() over (partition by CAL_DATE, TYPE order by CAL_DATE, TYPE nulls last) as rnk_fst
+                from CALENDAR_DIM
+            )
+        ) lkp_inner
+        where rnk_lst = 1
+    ) dsf_2
+        on dsf_2.CAL_DATE = v_BATCH_BUSINESS_DATE
+       and dsf_2.TYPE = 'LTD_STD'
+),
+
+DSR_SC_BOE_INTEROPERABILITY_FACTOut as (
+    select
+        EXP_FINAL1Out.ID,
+        EXP_FINAL1Out.BATCH_ID,
+        EXP_FINAL1Out.BUSINESS_DATE,
+        EXP_FINAL1Out.BUSINESS_DATE_ID,
+        EXP_FINAL1Out.BATCH_DETAILS_ID,
+        EXP_FINAL1Out.EXCHANGE,
+        EXP_FINAL1Out.INTEROP_ID,
+        EXP_FINAL1Out.INTEROP_DESC,
+        EXP_FINAL1Out.EXPOSURE_AMT as TtlInitlMrgn_AMT,
+        EXP_FINAL1Out.CURRENCY_MNEMONIC as TtlInitlMrgn_CCY,
+        EXP_FINAL1Out.Trdsclrd as TrdsClrd,
+        EXP_FINAL1Out.NOTIONAL_AMT as GrssNtnlAmt_AMT,
+        EXP_FINAL1Out.GROSS_NOTIONAL_CURRENCY as GrssNtnlAmt_CCY,
+        EXP_FINAL1Out.PstHrcutVal_AMT,
+        EXP_FINAL1Out.PstHrcutVal_CCY,
+        EXP_FINAL1Out.Trpty_MktVal_AMT,
+        EXP_FINAL1Out.Trpty_MktVal_CCY,
+        EXP_FINAL1Out.Coll_Type,
+        EXP_FINAL1Out.FinInstrmId,
+        EXP_FINAL1Out.issr,
+        EXP_FINAL1Out.MktVal_AMT,
+        EXP_FINAL1Out.CURRENCY_MNEMONIC as MktVal_CCY,
+        EXP_FINAL1Out.CollRqrmnt,
+        EXP_FINAL1Out.SUBMIT_FLAG,
+        EXP_FINAL1Out.ERROR_INDICATOR
+    from EXP_FINAL1Out
 )
 
-/* Additional transformations would follow here */
+select
+    ID,
+    BATCH_ID,
+    BUSINESS_DATE,
+    BUSINESS_DATE_ID,
+    BATCH_DETAILS_ID,
+    EXCHANGE,
+    INTEROP_ID,
+    INTEROP_DESC,
+    TtlInitlMrgn_AMT,
+    TtlInitlMrgn_CCY,
+    TrdsClrd,
+    GrssNtnlAmt_AMT,
+    GrssNtnlAmt_CCY,
+    PstHrcutVal_AMT,
+    PstHrcutVal_CCY,
+    Trpty_MktVal_AMT,
+    Trpty_MktVal_CCY,
+    Coll_Type,
+    FinInstrmId,
+    issr,
+    MktVal_AMT,
+    MktVal_CCY,
+    CollRqrmnt,
+    SUBMIT_FLAG,
+    ERROR_INDICATOR
+from DSR_SC_BOE_INTEROPERABILITY_FACTOut
