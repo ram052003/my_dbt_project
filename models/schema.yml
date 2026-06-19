@@ -1,3 +1,15 @@
 version: 2
 
 sources:
+  - name: FlatFile_catalog_1
+    tables:
+      - name: LCHSA_ETD_MetricByAccount_CDR_Info_YYYYmmdd_YYYYmmddHH24miss
+  - name: SC_LKP_BATCH_DETAILS_1
+    tables:
+      - name: BATCH_DETAILS
+  - name: SC_LKP_ENTITY_DIM_1
+    tables:
+      - name: ENTITY_DIM
+  - name: SC_LKP_DV_GENERIC_ERROR_MASTER_1
+    tables:
+      - name: APPLICATION_VARIABLES
