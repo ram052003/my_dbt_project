@@ -1,12 +1,4 @@
-name: m_LDSA_CONTRACT_DATA_LOAD
+name: mplt_DV_PROCESS_ERROR_DETAILS
 config-version: 2
 
 vars:
-  TOT_REC_COUNT: 'null'
-  SOURCE_NAME: 'null'
-  BATCH_START_DATE: 'null'
-  TARGET_NAME: 'null'
-  BUSINESS_DATE: 'null'
-  BATCH_ID: 0
-  FILE_NAME: 'null'
-  SOURCE_NAME_OVERRIDE: 'null'
