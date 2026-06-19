@@ -1,15 +1,3 @@
 version: 2
 
 sources:
-  - name: ULKP_APP_VAR_LDSA_ERR_1
-    tables:
-      - name: APPLICATION_VARIABLES
-  - name: FlatFile_catalog_1
-    tables:
-      - name: LCHSA_ETD_REFIT_InstrumentDelta_YYYYMMDD_YYYYMMDDHH24miss
-  - name: SC_LKP_BATCH_DETAILS_1
-    tables:
-      - name: BATCH_DETAILS
-  - name: SC_LKP_ENTITY_DIM_1
-    tables:
-      - name: ENTITY_DIM
