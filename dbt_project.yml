@@ -1,8 +1,9 @@
-name: m_LDSA_PARTICIPANT_DATA_LOAD
+name: m_LDSA_POSITION_DATA_LOAD
 config-version: 2
 
 vars:
-  TOT_REC_COUNT: 'null'
+  TOT_REC_COUNT: 'v_TOT_REC_COUNT'
+  SOURCE_NAME: 'null'
   BATCH_START_DATE: 'null'
   TARGET_NAME: 'null'
   BATCH_ID: 0

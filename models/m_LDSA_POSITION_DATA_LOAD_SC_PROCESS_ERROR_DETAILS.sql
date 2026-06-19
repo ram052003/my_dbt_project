@@ -1,0 +1,1844 @@
+{{ config(
+    materialized='incremental',
+    alias='PROCESS_ERROR_DETAILS',
+    schema='LDSA_SHARED',
+    pre_hook="",
+    post_hook="",
+    incremental_strategy='append'
+) }}
+
+WITH SQ_SC_LCHSA_ETD_Position_YYYYmmdd_YYYYmmddHH24missOut AS (
+    SELECT
+        REPORT_DATE,
+        PUTI,
+        Contract_Id,
+        CMF_Code,
+        TMF_Code,
+        Old_PA,
+        New_PA,
+        Long_quantity,
+        Short_quantity,
+        Mark_to_Market_price,
+        LifeCycle,
+        VARIATION_MARGIN,
+        PREMIUM_AMOUNT,
+        ACTION_TYPE,
+        EVENT_TYPE,
+        EVENT_DATE,
+        SETTLEMENT_DATE,
+        CurrentlyProcessedFileName,
+        PRIOR_UTI,
+        EXECUTION_TIMESTAMP
+    FROM {{ source('FlatFile_catalog_1', 'LCHSA_ETD_Position_YYYYmmdd_YYYYmmddHH24miss') }}
+),
+
+EXP_TRIMOut AS (
+    SELECT
+        PRIOR_UTI AS PRIOR_UTI,
+        EXECUTION_TIMESTAMP AS EXECUTION_TIMESTAMP,
+        CASE
+            WHEN REPORT_DATE IS NOT NULL THEN TO_DATE(LTRIM(RTRIM(REPORT_DATE)), 'DD/MM/YYYY')
+            ELSE RAISE_ERROR('REPORT_DATE is NULL from Source which is a mandatory field, hence aborting the session')
+        END AS O_REPORT_DATE,
+        LTRIM(RTRIM(PUTI)) AS v_PUTI,
+        CASE
+            WHEN SUBSTRING(v_PUTI, 1, 3) = 'R1I' THEN UPPER(v_PUTI)
+            ELSE v_PUTI
+        END AS O_PUTI,
+        LTRIM(RTRIM(Contract_Id)) AS O_Contract_Id,
+        LTRIM(RTRIM(CMF_CODE)) AS O_CMF_CODE,
+        LTRIM(RTRIM(TMF_CODE)) AS O_TMF_CODE,
+        LTRIM(RTRIM(Old_PA)) AS O_Old_PA,
+        LTRIM(RTRIM(New_PA)) AS O_New_PA,
+        LTRIM(RTRIM(Long_quantity)) AS O_Long_quantity,
+        LTRIM(RTRIM(Short_quantity)) AS O_Short_quantity,
+        LTRIM(RTRIM(Mark_to_Market_price)) AS O_Mark_to_Market_price,
+        LTRIM(RTRIM(LifeCycle)) AS O_LifeCycle,
+        RTRIM(LTRIM(VARIATION_MARGIN)) AS O_VARIATION_MARGIN,
+        RTRIM(LTRIM(PREMIUM_AMOUNT)) AS O_PREMIUM_AMOUNT,
+        LTRIM(RTRIM(ACTION_TYPE)) AS O_ACTION_TYPE,
+        LTRIM(RTRIM(EVENT_TYPE)) AS O_EVENT_TYPE,
+        CASE
+            WHEN EVENT_DATE IS NOT NULL THEN TO_DATE(LTRIM(RTRIM(EVENT_DATE)), 'YYYY-MM-DD')
+            ELSE NULL
+        END AS O_EVENT_DATE,
+        CASE
+            WHEN SETTLEMENT_DATE IS NOT NULL THEN TO_DATE(LTRIM(RTRIM(SETTLEMENT_DATE)), 'DD/MM/YYYY')
+            ELSE NULL
+        END AS O_SETTLEMENT_DATE,
+        'LCH.SA' AS ENTITY_NAME,
+        LTRIM(RTRIM(PRIOR_UTI)) AS O_PRIOR_UTI,
+        CASE
+            WHEN EXECUTION_TIMESTAMP IS NOT NULL THEN TO_TIMESTAMP(LTRIM(RTRIM(EXECUTION_TIMESTAMP)), 'YYYY-MM-DD HH24:MI:SS')
+            ELSE NULL
+        END AS O_EXECUTION_TIMESTAMP,
+        CurrentlyProcessedFileName AS CurrentlyProcessedFileName
+    FROM SQ_SC_LCHSA_ETD_Position_YYYYmmdd_YYYYmmddHH24missOut
+),
+
+DSR_EXP_PASS_THROUGHOut AS (
+    SELECT
+        EXP_TRIMOut.O_REPORT_DATE AS REPORT_DATE,
+        EXP_TRIMOut.O_PUTI AS PUTI,
+        EXP_TRIMOut.O_Contract_Id AS CONTRACT_ID,
+        EXP_TRIMOut.O_CMF_CODE AS CMF_CODE,
+        EXP_TRIMOut.O_TMF_CODE AS TMF_CODE,
+        EXP_TRIMOut.O_Old_PA AS OLD_PA,
+        EXP_TRIMOut.O_New_PA AS NEW_PA,
+        EXP_TRIMOut.O_Long_quantity AS LONG_QUANTITY,
+        EXP_TRIMOut.O_Short_quantity AS SHORT_QUANTITY,
+        EXP_TRIMOut.O_Mark_to_Market_price AS MARK_TO_MARKET_PRICE,
+        EXP_TRIMOut.O_LifeCycle AS LIFECYCLE,
+        EXP_TRIMOut.O_VARIATION_MARGIN AS VARIATION_MARGIN,
+        EXP_TRIMOut.O_PREMIUM_AMOUNT AS PREMIUM_AMOUNT,
+        EXP_TRIMOut.O_ACTION_TYPE AS ACTION_TYPE,
+        EXP_TRIMOut.O_EVENT_TYPE AS EVENT_TYPE,
+        EXP_TRIMOut.O_EVENT_DATE AS EVENT_DATE,
+        EXP_TRIMOut.O_SETTLEMENT_DATE AS SETTLEMENT_DATE,
+        EXP_TRIMOut.ENTITY_NAME AS ENTITY_NAME,
+        EXP_TRIMOut.CurrentlyProcessedFileName AS CurrentlyProcessedFileName,
+        EXP_TRIMOut.O_PRIOR_UTI AS O_PRIOR_UTI,
+        EXP_TRIMOut.O_EXECUTION_TIMESTAMP AS O_EXECUTION_TIMESTAMP
+    FROM EXP_TRIMOut
+),
+
+Target_Table_Name_SK_Max_Value AS (
+    SELECT
+        MAX(GENERATED_SEQ) AS max_generated_seq
+    FROM {{ this }}
+),
+
+DSR_SC_EXP_EPOC_GENERATOROut AS (
+    SELECT
+        (SELECT max_generated_seq FROM Target_Table_Name_SK_Max_Value) + ROW_NUMBER() OVER () AS GENERATED_SEQ
+    FROM (SELECT 1) t
+),
+
+EXP_PASS_THROUGHOut AS (
+    SELECT
+        '{{ var("BATCH_ID") }}' AS BATCH_ID,
+        dsf_1.ID AS BATCH_DETAILS_ID,
+        TO_TIMESTAMP('{{ var("BATCH_START_DATE") }}', 'DD-MON-YYYY HH24:MI:SS') AS BATCH_START_DATE,
+        REPORT_DATE AS REPORT_DATE,
+        '{{ var("PMWorkflowName", "") }}' AS WORKFLOW_NAME,
+        '{{ var("PMMappingName", "") }}' AS MAPPING_NAME,
+        '{{ var("TARGET_NAME") }}' AS TARGET_NAME,
+        PUTI AS PUTI,
+        CONTRACT_ID AS CONTRACT_ID,
+        CMF_CODE AS CMF_CODE,
+        TMF_CODE AS TMF_CODE,
+        OLD_PA AS OLD_PA,
+        NEW_PA AS NEW_PA,
+        LONG_QUANTITY AS LONG_QUANTITY,
+        SHORT_QUANTITY AS SHORT_QUANTITY,
+        MARK_TO_MARKET_PRICE AS MARK_TO_MARKET_PRICE,
+        LIFECYCLE AS LIFECYCLE,
+        VARIATION_MARGIN AS VARIATION_MARGIN,
+        PREMIUM_AMOUNT AS PREMIUM_AMOUNT,
+        ACTION_TYPE AS ACTION_TYPE,
+        EVENT_TYPE AS EVENT_TYPE,
+        CASE WHEN EVENT_TYPE IS NULL THEN 'N/A' ELSE EVENT_TYPE END AS v_EVENT_TYPE,
+        dsf_2.VARIABLE_NAME AS v_LKP_EVENT_TYPE_VAL,
+        CASE WHEN v_LKP_EVENT_TYPE_VAL IS NULL THEN NULL ELSE 'PASS' END AS O_EVENT_TYPE_VAL,
+        EVENT_DATE AS EVENT_DATE,
+        SETTLEMENT_DATE AS SETTLEMENT_DATE,
+        ENTITY_NAME AS ENTITY_NAME,
+        dsf_3.DIMENSION_KEY AS ENTITY_ID,
+        v_TOT_REC_COUNT + 1 AS v_TOT_REC_COUNT,
+        '{{ var("TOT_REC_COUNT") }}' AS TOT_REC_COUNT,
+        'Y' AS NUM_FLAG_Y,
+        CurrentlyProcessedFileName AS CurrentlyProcessedFileName,
+        'STRING' AS DATA_TYPE_STRING,
+        'DATE' AS DATA_TYPE_DATE,
+        'NUMBER' AS DATA_TYPE_NUMBER,
+        'E300_BLANK_FIELD_OR_LKUP_FAIL' AS VALIDATION_NAME,
+        'ENTITY_ID' AS ATTRIBUTE_NAME_1,
+        'PUTI' AS ATTRIBUTE_NAME_2,
+        'CONTRACT_ID' AS ATTRIBUTE_NAME_3,
+        'CMF_CODE' AS ATTRIBUTE_NAME_4,
+        'TMF_CODE' AS ATTRIBUTE_NAME_5,
+        'OLD_PA' AS ATTRIBUTE_NAME_6,
+        'NEW_PA' AS ATTRIBUTE_NAME_7,
+        'LIFECYCLE' AS ATTRIBUTE_NAME_8,
+        'ACTION_TYPE' AS ATTRIBUTE_NAME_9,
+        'EVENT_TYPE' AS ATTRIBUTE_NAME_10,
+        O_PRIOR_UTI AS O_PRIOR_UTI,
+        O_EXECUTION_TIMESTAMP AS O_EXECUTION_TIMESTAMP
+    FROM DSR_EXP_PASS_THROUGHOut
+    LEFT JOIN (
+        SELECT
+            ID,
+            BATCH_ID,
+            TARGET_TABLE_NAME,
+            FILE_NAME
+        FROM (
+            SELECT
+                ID,
+                BATCH_ID,
+                TARGET_TABLE_NAME,
+                FILE_NAME,
+                ROW_NUMBER() OVER (PARTITION BY BATCH_ID, TARGET_TABLE_NAME, FILE_NAME ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ID,
+                    BATCH_ID,
+                    TARGET_TABLE_NAME,
+                    FILE_NAME,
+                    ROW_NUMBER() OVER (PARTITION BY BATCH_ID, TARGET_TABLE_NAME, FILE_NAME ORDER BY BATCH_ID, TARGET_TABLE_NAME, FILE_NAME NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        BATCH_DETAILS.ID AS ID,
+                        BATCH_DETAILS.BATCH_ID AS BATCH_ID,
+                        BATCH_DETAILS.TARGET_TABLE_NAME AS TARGET_TABLE_NAME,
+                        BATCH_DETAILS.FILE_NAME AS FILE_NAME,
+                        BATCH_DETAILS.STATUS AS STATUS
+                    FROM (
+                        SELECT
+                            id,
+                            TARGET_TABLE_NAME,
+                            BATCH_ID,
+                            STATUS,
+                            ACTIVE_FLAG,
+                            BATCH_DETAILS_START_TIME,
+                            FILE_NAME,
+                            RANK() OVER (PARTITION BY batch_id, TARGET_TABLE_NAME, FILE_NAME ORDER BY BATCH_DETAILS_START_TIME DESC) AS RANK
+                        FROM BATCH_DETAILS
+                    ) BATCH_DETAILS
+                    WHERE RANK = 1
+                      AND STATUS = 'I'
+                      AND ACTIVE_FLAG = 1
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.BATCH_ID = '{{ var("BATCH_ID") }}'
+       AND dsf_1.TARGET_TABLE_NAME = '{{ var("TARGET_NAME") }}'
+       AND dsf_1.FILE_NAME = '{{ var("FILE_NAME_OVERRIDE") }}'
+    LEFT JOIN (
+        SELECT
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE, STRING_VALUE2 ORDER BY STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.VARIABLE_NAME AS VARIABLE_NAME,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE,
+                        APPLICATION_VARIABLES.STRING_VALUE2 AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'LDSA_POSITION_ACTION_TYPE_TO_EVENT_TYPE_MAPPING'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.STRING_VALUE = ACTION_TYPE
+       AND dsf_2.STRING_VALUE2 = v_EVENT_TYPE
+    LEFT JOIN (
+        SELECT
+            DIMENSION_KEY,
+            NAME,
+            EFFECTIVE_DATE,
+            EXPIRATION_DATE
+        FROM (
+            SELECT
+                DIMENSION_KEY,
+                NAME,
+                EFFECTIVE_DATE,
+                EXPIRATION_DATE,
+                ROW_NUMBER() OVER (PARTITION BY NAME, EFFECTIVE_DATE, EXPIRATION_DATE ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    DIMENSION_KEY,
+                    NAME,
+                    EFFECTIVE_DATE,
+                    EXPIRATION_DATE,
+                    ROW_NUMBER() OVER (PARTITION BY NAME, EFFECTIVE_DATE, EXPIRATION_DATE ORDER BY NAME, EFFECTIVE_DATE, EXPIRATION_DATE NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        ENTITY_DIM.DIMENSION_KEY AS DIMENSION_KEY,
+                        ENTITY_DIM.NAME AS NAME,
+                        ENTITY_DIM.EFFECTIVE_DATE AS EFFECTIVE_DATE,
+                        NVL(ENTITY_DIM.EXPIRATION_DATE, TO_DATE('31-DEC-2099', 'DD-MON-YYYY')) AS EXPIRATION_DATE
+                    FROM ENTITY_DIM
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_3
+        ON dsf_3.NAME = ENTITY_NAME
+       AND dsf_3.EFFECTIVE_DATE <= REPORT_DATE
+       AND dsf_3.EXPIRATION_DATE >= REPORT_DATE
+),
+
+SC_EXP_EPOC_GENERATOROut AS (
+    SELECT
+        LPAD(GENERATED_SEQ, 9, '0') AS v_SEQ_LPAD_TO_9,
+        DATEDIFF('second', TO_TIMESTAMP('01/01/1970 00:00:00', 'DD-MM-YYYY HH24:MI:SS'), CURRENT_TIMESTAMP()) AS v_EPOC_TIME,
+        v_EPOC_TIME || v_SEQ_LPAD_TO_9 AS v_CONCATE_ID,
+        v_CONCATE_ID AS ID
+    FROM DSR_SC_EXP_EPOC_GENERATOROut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_4 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.CMF_CODE AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_PUTIOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_2 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.PUTI AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_7 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.NEW_PA AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_3 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.CONTRACT_ID AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_9 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.ACTION_TYPE AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_6 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.OLD_PA AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_ENTITY_IDOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_1 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_NUMBER AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.NUM_FLAG_Y AS in_DIMENSION_KEY_FLAG,
+        EXP_PASS_THROUGHOut.ENTITY_ID AS in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_5 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.TMF_CODE AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_10 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.O_EVENT_TYPE_VAL AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+DSR_EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut AS (
+    SELECT
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS in_VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_8 AS in_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.DATA_TYPE_STRING AS in_DATA_TYPE,
+        EXP_PASS_THROUGHOut.LIFECYCLE AS in_ATTRIBUTE_TO_BE_VALIDATED_STR
+    FROM EXP_PASS_THROUGHOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_PUTIOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_PUTIOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut AS (
+    SELECT
+        '{{ var("TARGET_NAME") }}' AS TARGET_TABLE_NAME,
+        dsf_1.ACTIVE_Y_N_STR_VL AS v_VALIDATION_ACTIVE,
+        CASE WHEN v_VALIDATION_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ACTIVE END AS v_VALIDATION_ACTIVE_NVL,
+        dsf_2.ACTIVE_Y_N AS v_VALIDATION_ON_TABLE_ACTIVE,
+        CASE WHEN v_VALIDATION_ON_TABLE_ACTIVE IS NULL THEN 'N' ELSE v_VALIDATION_ON_TABLE_ACTIVE END AS v_VALIDATION_ON_TABLE_ACTIVE_NVL,
+        CASE
+            WHEN in_DATA_TYPE = 'DATE' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_DATE IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_DATE,
+        CASE
+            WHEN in_DATA_TYPE = 'STRING' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE WHEN in_ATTRIBUTE_TO_BE_VALIDATED_STR IS NULL THEN 'F' ELSE 'P' END
+            ELSE 'P'
+        END AS v_NULL_CHECK_STR,
+        CASE
+            WHEN in_DATA_TYPE = 'NUMBER' AND v_VALIDATION_ON_TABLE_ACTIVE_NVL = 'Y' AND v_VALIDATION_ACTIVE_NVL = 'Y'
+                THEN CASE
+                    WHEN in_ATTRIBUTE_TO_BE_VALIDATED_NUM IS NULL
+                         OR (CASE WHEN in_DIMENSION_KEY_FLAG IS NULL THEN 'N' ELSE in_DIMENSION_KEY_FLAG END) = 'Y'
+                            AND in_ATTRIBUTE_TO_BE_VALIDATED_NUM = -2
+                        THEN 'F'
+                    ELSE 'P'
+                END
+            ELSE 'P'
+        END AS v_NULL_CHECK_NUM,
+        CASE
+            WHEN v_NULL_CHECK_DATE = 'F' OR v_NULL_CHECK_STR = 'F' OR v_NULL_CHECK_NUM = 'F' THEN 'F' ELSE 'P'
+        END AS v_VALIDATION_PASS_FAIL,
+        v_VALIDATION_PASS_FAIL AS o_VALIDATION_PASS_FAIL,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'DATE'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_DATE
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_DATE,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'STRING'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_STR
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_STR,
+        CASE
+            WHEN v_VALIDATION_PASS_FAIL = 'F' AND in_DATA_TYPE = 'NUMBER'
+                THEN in_ATTRIBUTE_NAME || ':' || in_ATTRIBUTE_TO_BE_VALIDATED_NUM
+            ELSE NULL
+        END AS v_ERROR_MESSAGE_NUM,
+        v_ERROR_MESSAGE_DATE || v_ERROR_MESSAGE_STR || v_ERROR_MESSAGE_NUM AS o_COMBINED_ERROR_MESSAGE,
+        CASE WHEN v_VALIDATION_PASS_FAIL = 'F' THEN 1 ELSE 0 END AS o_ERROR_SEVERITY
+    FROM DSR_EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N_STR_VL,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N_STR_VL,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N_STR_VL,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY STRING_VALUE2 ORDER BY STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM (
+                    SELECT
+                        APPLICATION_VARIABLES.ACTIVE_Y_N AS ACTIVE_Y_N_STR_VL,
+                        APPLICATION_VARIABLES.STRING_VALUE AS STRING_VALUE2
+                    FROM APPLICATION_VARIABLES
+                    WHERE VARIABLE_NAME = 'GENERIC_ERROR_MASTER'
+                      AND ACTIVE_Y_N = 'Y'
+                )
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_1
+        ON dsf_1.STRING_VALUE2 = in_VALIDATION_NAME
+    LEFT JOIN (
+        SELECT
+            ACTIVE_Y_N,
+            VARIABLE_NAME,
+            STRING_VALUE,
+            STRING_VALUE2
+        FROM (
+            SELECT
+                ACTIVE_Y_N,
+                VARIABLE_NAME,
+                STRING_VALUE,
+                STRING_VALUE2,
+                ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY rnk_fst DESC NULLS LAST) AS rnk_lst
+            FROM (
+                SELECT
+                    ACTIVE_Y_N,
+                    VARIABLE_NAME,
+                    STRING_VALUE,
+                    STRING_VALUE2,
+                    ROW_NUMBER() OVER (PARTITION BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 ORDER BY VARIABLE_NAME, STRING_VALUE, STRING_VALUE2 NULLS LAST) AS rnk_fst
+                FROM APPLICATION_VARIABLES
+            )
+        )
+        WHERE rnk_lst = 1
+    ) dsf_2
+        ON dsf_2.VARIABLE_NAME = in_VALIDATION_NAME
+       AND dsf_2.STRING_VALUE = TARGET_TABLE_NAME
+       AND dsf_2.STRING_VALUE2 = in_ATTRIBUTE_NAME
+),
+
+EXP_LDSA_VALIDATION_CHECKER_OLD_PA_master AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut.o_VALIDATION_PASS_FAIL AS OLD_PA_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut.o_COMBINED_ERROR_MESSAGE AS OLD_PA_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut.o_ERROR_SEVERITY AS OLD_PA_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_OLD_PAOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_ENTITY_ID_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_ENTITY_IDOut.o_VALIDATION_PASS_FAIL AS ENTITY_ID_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_ENTITY_IDOut.o_COMBINED_ERROR_MESSAGE AS ENTITY_ID_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_ENTITY_IDOut.o_ERROR_SEVERITY AS ENTITY_ID_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_ENTITY_IDOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_CMF_CODE_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut.o_VALIDATION_PASS_FAIL AS CMF_CODE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut.o_COMBINED_ERROR_MESSAGE AS CMF_CODE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut.o_ERROR_SEVERITY AS CMF_CODE_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_CMF_CODEOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_PUTI_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_PUTIOut.o_VALIDATION_PASS_FAIL AS PUTI_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_PUTIOut.o_COMBINED_ERROR_MESSAGE AS PUTI_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_PUTIOut.o_ERROR_SEVERITY AS PUTI_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_PUTIOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_NEW_PA_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut.o_VALIDATION_PASS_FAIL AS NEW_PA_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut.o_COMBINED_ERROR_MESSAGE AS NEW_PA_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut.o_ERROR_SEVERITY AS NEW_PA_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_NEW_PAOut
+),
+
+EXP_PASS_THROUGH_details AS (
+    SELECT
+        EXP_PASS_THROUGHOut.BATCH_ID AS BATCH_ID,
+        EXP_PASS_THROUGHOut.BATCH_DETAILS_ID AS BATCH_DETAILS_ID,
+        EXP_PASS_THROUGHOut.BATCH_START_DATE AS BATCH_START_DATE,
+        EXP_PASS_THROUGHOut.REPORT_DATE AS BUSINESS_DATE,
+        EXP_PASS_THROUGHOut.WORKFLOW_NAME AS WORKFLOW_NAME,
+        EXP_PASS_THROUGHOut.MAPPING_NAME AS MAPPING_NAME,
+        EXP_PASS_THROUGHOut.TARGET_NAME AS TARGET_NAME,
+        EXP_PASS_THROUGHOut.VALIDATION_NAME AS VALIDATION_NAME,
+        EXP_PASS_THROUGHOut.PUTI AS PUTI,
+        EXP_PASS_THROUGHOut.CONTRACT_ID AS CONTRACT_ID,
+        EXP_PASS_THROUGHOut.CMF_CODE AS CMF_CODE,
+        EXP_PASS_THROUGHOut.TMF_CODE AS TMF_CODE,
+        EXP_PASS_THROUGHOut.OLD_PA AS OLD_PA,
+        EXP_PASS_THROUGHOut.NEW_PA AS NEW_PA,
+        EXP_PASS_THROUGHOut.LIFECYCLE AS LIFECYCLE,
+        EXP_PASS_THROUGHOut.ENTITY_NAME AS ENTITY_NAME,
+        EXP_PASS_THROUGHOut.ENTITY_ID AS ENTITY_ID,
+        EXP_PASS_THROUGHOut.TOT_REC_COUNT AS TOT_REC_COUNT,
+        EXP_PASS_THROUGHOut.CurrentlyProcessedFileName AS CurrentlyProcessedFileName,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_1 AS ENTITY_ID_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_2 AS PUTI_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_3 AS CONTRACT_ID_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_4 AS CMF_CODE_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_5 AS TMF_CODE_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_6 AS OLD_PA_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_7 AS NEW_PA_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_8 AS LIFECYCLE_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_9 AS ACTIONTYPE_ATTRIBUTE_NAME,
+        EXP_PASS_THROUGHOut.ATTRIBUTE_NAME_10 AS EVENTTYPE_ATTRIBUTE_NAME
+    FROM EXP_PASS_THROUGHOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_TMF_CODE_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut.o_VALIDATION_PASS_FAIL AS TMF_CODE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut.o_COMBINED_ERROR_MESSAGE AS TMF_CODE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut.o_ERROR_SEVERITY AS TMF_CODE_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_TMF_CODEOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPE_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut.o_VALIDATION_PASS_FAIL AS EVENTTYPE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut.o_COMBINED_ERROR_MESSAGE AS EVENTTYPE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut.o_ERROR_SEVERITY AS EVENTTYPE_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPEOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_CONTRACT_ID_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut.o_VALIDATION_PASS_FAIL AS CONTRACT_ID_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut.o_COMBINED_ERROR_MESSAGE AS CONTRACT_ID_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut.o_ERROR_SEVERITY AS CONTRACT_ID_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_CONTRACT_IDOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_LIFECYCLE_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut.o_VALIDATION_PASS_FAIL AS LIFECYCLE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut.o_COMBINED_ERROR_MESSAGE AS LIFECYCLE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut.o_ERROR_SEVERITY AS LIFECYCLE_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_LIFECYCLEOut
+),
+
+EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPE_details AS (
+    SELECT
+        EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut.o_VALIDATION_PASS_FAIL AS ACTIONTYPE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut.o_COMBINED_ERROR_MESSAGE AS ACTIONTYPE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut.o_ERROR_SEVERITY AS ACTIONTYPE_ERROR_SEVERITY
+    FROM EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPEOut
+),
+
+dsJoiner_EXP_CONSOLIDATE_VALIDATIONS0Out AS (
+    SELECT
+        EXP_PASS_THROUGH_details.BATCH_ID AS BATCH_ID,
+        EXP_PASS_THROUGH_details.BATCH_DETAILS_ID AS BATCH_DETAILS_ID,
+        EXP_PASS_THROUGH_details.BATCH_START_DATE AS BATCH_START_DATE,
+        EXP_PASS_THROUGH_details.BUSINESS_DATE AS BUSINESS_DATE,
+        EXP_PASS_THROUGH_details.WORKFLOW_NAME AS WORKFLOW_NAME,
+        EXP_PASS_THROUGH_details.MAPPING_NAME AS MAPPING_NAME,
+        EXP_PASS_THROUGH_details.TARGET_NAME AS TARGET_NAME,
+        EXP_PASS_THROUGH_details.VALIDATION_NAME AS VALIDATION_NAME,
+        EXP_PASS_THROUGH_details.PUTI AS PUTI,
+        EXP_PASS_THROUGH_details.CONTRACT_ID AS CONTRACT_ID,
+        EXP_PASS_THROUGH_details.CMF_CODE AS CMF_CODE,
+        EXP_PASS_THROUGH_details.TMF_CODE AS TMF_CODE,
+        EXP_PASS_THROUGH_details.OLD_PA AS OLD_PA,
+        EXP_PASS_THROUGH_details.NEW_PA AS NEW_PA,
+        EXP_PASS_THROUGH_details.LIFECYCLE AS LIFECYCLE,
+        EXP_PASS_THROUGH_details.ENTITY_NAME AS ENTITY_NAME,
+        EXP_PASS_THROUGH_details.ENTITY_ID AS ENTITY_ID,
+        EXP_PASS_THROUGH_details.TOT_REC_COUNT AS TOT_REC_COUNT,
+        EXP_PASS_THROUGH_details.CurrentlyProcessedFileName AS CurrentlyProcessedFileName,
+        EXP_PASS_THROUGH_details.ENTITY_ID_ATTRIBUTE_NAME AS ENTITY_ID_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_ENTITY_ID_details.ENTITY_ID_VALIDATION_PASS_FAIL AS ENTITY_ID_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_ENTITY_ID_details.ENTITY_ID_ERROR_MESSAGE AS ENTITY_ID_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_ENTITY_ID_details.ENTITY_ID_ERROR_SEVERITY AS ENTITY_ID_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.PUTI_ATTRIBUTE_NAME AS PUTI_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_PUTI_details.PUTI_VALIDATION_PASS_FAIL AS PUTI_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_PUTI_details.PUTI_ERROR_MESSAGE AS PUTI_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_PUTI_details.PUTI_ERROR_SEVERITY AS PUTI_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.CONTRACT_ID_ATTRIBUTE_NAME AS CONTRACT_ID_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_CONTRACT_ID_details.CONTRACT_ID_VALIDATION_PASS_FAIL AS CONTRACT_ID_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_CONTRACT_ID_details.CONTRACT_ID_ERROR_MESSAGE AS CONTRACT_ID_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_CONTRACT_ID_details.CONTRACT_ID_ERROR_SEVERITY AS CONTRACT_ID_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.CMF_CODE_ATTRIBUTE_NAME AS CMF_CODE_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_CMF_CODE_details.CMF_CODE_VALIDATION_PASS_FAIL AS CMF_CODE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_CMF_CODE_details.CMF_CODE_ERROR_MESSAGE AS CMF_CODE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_CMF_CODE_details.CMF_CODE_ERROR_SEVERITY AS CMF_CODE_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.TMF_CODE_ATTRIBUTE_NAME AS TMF_CODE_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_TMF_CODE_details.TMF_CODE_VALIDATION_PASS_FAIL AS TMF_CODE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_TMF_CODE_details.TMF_CODE_ERROR_MESSAGE AS TMF_CODE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_TMF_CODE_details.TMF_CODE_ERROR_SEVERITY AS TMF_CODE_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.OLD_PA_ATTRIBUTE_NAME AS OLD_PA_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_OLD_PA_master.OLD_PA_VALIDATION_PASS_FAIL AS OLD_PA_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_OLD_PA_master.OLD_PA_ERROR_MESSAGE AS OLD_PA_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_OLD_PA_master.OLD_PA_ERROR_SEVERITY AS OLD_PA_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.NEW_PA_ATTRIBUTE_NAME AS NEW_PA_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_NEW_PA_details.NEW_PA_VALIDATION_PASS_FAIL AS NEW_PA_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_NEW_PA_details.NEW_PA_ERROR_MESSAGE AS NEW_PA_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_NEW_PA_details.NEW_PA_ERROR_SEVERITY AS NEW_PA_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.LIFECYCLE_ATTRIBUTE_NAME AS LIFECYCLE_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_LIFECYCLE_details.LIFECYCLE_VALIDATION_PASS_FAIL AS LIFECYCLE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_LIFECYCLE_details.LIFECYCLE_ERROR_MESSAGE AS LIFECYCLE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_LIFECYCLE_details.LIFECYCLE_ERROR_SEVERITY AS LIFECYCLE_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.ACTIONTYPE_ATTRIBUTE_NAME AS ACTIONTYPE_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPE_details.ACTIONTYPE_VALIDATION_PASS_FAIL AS ACTIONTYPE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPE_details.ACTIONTYPE_ERROR_MESSAGE AS ACTIONTYPE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPE_details.ACTIONTYPE_ERROR_SEVERITY AS ACTIONTYPE_ERROR_SEVERITY,
+        EXP_PASS_THROUGH_details.EVENTTYPE_ATTRIBUTE_NAME AS EVENTTYPE_ATTRIBUTE_NAME,
+        EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPE_details.EVENTTYPE_VALIDATION_PASS_FAIL AS EVENTTYPE_VALIDATION_PASS_FAIL,
+        EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPE_details.EVENTTYPE_ERROR_MESSAGE AS EVENTTYPE_ERROR_MESSAGE,
+        EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPE_details.EVENTTYPE_ERROR_SEVERITY AS EVENTTYPE_ERROR_SEVERITY,
+        SC_EXP_EPOC_GENERATOROut.ID AS ID,
+        ROW_NUMBER() OVER (ORDER BY 1) AS jkey
+    FROM EXP_PASS_THROUGH_details
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_ENTITY_ID_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_ENTITY_ID_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_CMF_CODE_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_CMF_CODE_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_PUTI_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_PUTI_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_NEW_PA_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_NEW_PA_details.jkey
+    INNER JOIN EXP_PASS_THROUGH_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_PASS_THROUGH_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_TMF_CODE_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_TMF_CODE_details.jkey
+    INNER JOIN SC_EXP_EPOC_GENERATOROut
+        ON EXP_PASS_THROUGH_details.jkey = SC_EXP_EPOC_GENERATOROut.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPE_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_EVENT_TYPE_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_CONTRACT_ID_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_CONTRACT_ID_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_LIFECYCLE_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_LIFECYCLE_details.jkey
+    INNER JOIN EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPE_details
+        ON EXP_PASS_THROUGH_details.jkey = EXP_LDSA_VALIDATION_CHECKER_ACTIONTYPE_details.jkey
+),
+
+EXP_CONSOLIDATE_VALIDATIONSOut AS (
+    SELECT
+        BATCH_ID,
+        BATCH_DETAILS_ID,
+        BATCH_START_DATE,
+        BUSINESS_DATE,
+        WORKFLOW_NAME,
+        MAPPING_NAME,
+        TARGET_NAME,
+        VALIDATION_NAME,
+        PUTI,
+        CONTRACT_ID,
+        CMF_CODE,
+        TMF_CODE,
+        OLD_PA,
+        NEW_PA,
+        LIFECYCLE,
+        ENTITY_NAME,
+        ENTITY_ID,
+        TOT_REC_COUNT,
+        CurrentlyProcessedFileName,
+        '{{ var("FILE_NAME") }}' AS FILE_NAME,
+        'FILE NAME:' || FILE_NAME || '/' || 'BUSINESS_DATE:' || BUSINESS_DATE || '/' AS v_ERROR_MESSAGE,
+        ENTITY_ID_ATTRIBUTE_NAME,
+        ENTITY_ID_VALIDATION_PASS_FAIL,
+        ENTITY_ID_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || ENTITY_ID_ERROR_MESSAGE AS o_ENTITY_ID_ERROR_MESSAGE,
+        PUTI_ATTRIBUTE_NAME,
+        PUTI_VALIDATION_PASS_FAIL,
+        PUTI_ERROR_MESSAGE,
+        PUTI_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || PUTI_ERROR_MESSAGE AS O_PUTI_ERROR_MESSAGE,
+        CONTRACT_ID_ATTRIBUTE_NAME,
+        CONTRACT_ID_VALIDATION_PASS_FAIL,
+        CONTRACT_ID_ERROR_MESSAGE,
+        CONTRACT_ID_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || CONTRACT_ID_ERROR_MESSAGE AS O_CONTRACT_ID_ERROR_MESSAGE,
+        CMF_CODE_ATTRIBUTE_NAME,
+        CMF_CODE_VALIDATION_PASS_FAIL,
+        CMF_CODE_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || CMF_CODE_ERROR_MESSAGE AS O_CMF_CODE_ERROR_MESSAGE,
+        TMF_CODE_ATTRIBUTE_NAME,
+        TMF_CODE_VALIDATION_PASS_FAIL,
+        TMF_CODE_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || TMF_CODE_ERROR_MESSAGE AS O_TMF_CODE_ERROR_MESSAGE,
+        OLD_PA_ATTRIBUTE_NAME,
+        OLD_PA_VALIDATION_PASS_FAIL,
+        OLD_PA_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || OLD_PA_ERROR_MESSAGE AS O_OLD_PA_ERROR_MESSAGE,
+        NEW_PA_ATTRIBUTE_NAME,
+        NEW_PA_VALIDATION_PASS_FAIL,
+        NEW_PA_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || NEW_PA_ERROR_MESSAGE AS O_NEW_PA_ERROR_MESSAGE,
+        LIFECYCLE_ATTRIBUTE_NAME,
+        LIFECYCLE_VALIDATION_PASS_FAIL,
+        LIFECYCLE_ERROR_MESSAGE,
+        LIFECYCLE_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || LIFECYCLE_ERROR_MESSAGE AS O_LIFECYCLE_ERROR_MESSAGE,
+        ACTIONTYPE_ATTRIBUTE_NAME,
+        ACTIONTYPE_VALIDATION_PASS_FAIL,
+        ACTIONTYPE_ERROR_MESSAGE,
+        ACTIONTYPE_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || ACTIONTYPE_ERROR_MESSAGE AS O_ACTIONTYPE_ERROR_MESSAGE,
+        EVENTTYPE_ATTRIBUTE_NAME,
+        EVENTTYPE_VALIDATION_PASS_FAIL,
+        EVENTTYPE_ERROR_MESSAGE,
+        EVENTTYPE_ERROR_SEVERITY,
+        v_ERROR_MESSAGE || EVENTTYPE_ERROR_MESSAGE AS O_EVENTTYPE_ERROR_MESSAGE,
+        CASE
+            WHEN ENTITY_ID_VALIDATION_PASS_FAIL = 'F'
+                 OR PUTI_VALIDATION_PASS_FAIL = 'F'
+                 OR CONTRACT_ID_VALIDATION_PASS_FAIL = 'F'
+                 OR CMF_CODE_VALIDATION_PASS_FAIL = 'F'
+                 OR TMF_CODE_VALIDATION_PASS_FAIL = 'F'
+                 OR OLD_PA_VALIDATION_PASS_FAIL = 'F'
+                 OR NEW_PA_VALIDATION_PASS_FAIL = 'F'
+                 OR LIFECYCLE_VALIDATION_PASS_FAIL = 'F'
+                 OR ACTIONTYPE_VALIDATION_PASS_FAIL = 'F'
+                 OR EVENTTYPE_VALIDATION_PASS_FAIL = 'F'
+                THEN 1
+            ELSE 0
+        END AS MD_ERROR_IND,
+        ID,
+        CASE
+            WHEN REGEXP_INSTR(CurrentlyProcessedFileName, 'DCL') > 0 THEN 'DCLSA'
+            ELSE 'MATIF_MONEP'
+        END AS DATA_SET_NAME
+    FROM dsJoiner_EXP_CONSOLIDATE_VALIDATIONS0Out
+),
+
+DSR_FIL_ERROR_LOGICOut AS (
+    SELECT
+        EXP_CONSOLIDATE_VALIDATIONSOut.NEW_PA_ATTRIBUTE_NAME AS NEW_PA_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.NEW_PA_ERROR_SEVERITY AS NEW_PA_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.ACTIONTYPE_ATTRIBUTE_NAME AS ACTIONTYPE_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.ACTIONTYPE_ERROR_SEVERITY AS ACTIONTYPE_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_ACTIONTYPE_ERROR_MESSAGE AS ACTIONTYPE_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.EVENTTYPE_ATTRIBUTE_NAME AS EVENTTYPE_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.EVENTTYPE_ERROR_SEVERITY AS EVENTTYPE_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_EVENTTYPE_ERROR_MESSAGE AS EVENTTYPE_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.BATCH_ID AS BATCH_ID,
+        EXP_CONSOLIDATE_VALIDATIONSOut.BATCH_DETAILS_ID AS BATCH_DETAILS_ID,
+        EXP_CONSOLIDATE_VALIDATIONSOut.BATCH_START_DATE AS BATCH_START_DATE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.BUSINESS_DATE AS BUSINESS_DATE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.WORKFLOW_NAME AS WORKFLOW_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.MAPPING_NAME AS MAPPING_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.TARGET_NAME AS TARGET_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.VALIDATION_NAME AS VALIDATION_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.ENTITY_ID_ATTRIBUTE_NAME AS ENTITY_ID_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.ENTITY_ID_ERROR_SEVERITY AS ENTITY_ID_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.o_ENTITY_ID_ERROR_MESSAGE AS ENTITY_ID_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.CurrentlyProcessedFileName AS CurrentlyProcessedFileName,
+        EXP_CONSOLIDATE_VALIDATIONSOut.ID AS ID,
+        EXP_CONSOLIDATE_VALIDATIONSOut.MD_ERROR_IND AS MD_ERROR_IND,
+        EXP_CONSOLIDATE_VALIDATIONSOut.TMF_CODE_ATTRIBUTE_NAME AS TMF_CODE_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.TMF_CODE_ERROR_SEVERITY AS TMF_CODE_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_TMF_CODE_ERROR_MESSAGE AS TMF_CODE_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.CMF_CODE_ATTRIBUTE_NAME AS CMF_CODE_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.CMF_CODE_ERROR_SEVERITY AS CMF_CODE_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_CMF_CODE_ERROR_MESSAGE AS CMF_CODE_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_NEW_PA_ERROR_MESSAGE AS NEW_PA_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.LIFECYCLE_ATTRIBUTE_NAME AS LIFECYCLE_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.LIFECYCLE_ERROR_SEVERITY AS LIFECYCLE_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_LIFECYCLE_ERROR_MESSAGE AS LIFECYCLE_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.PUTI_ATTRIBUTE_NAME AS PUTI_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.PUTI_ERROR_SEVERITY AS PUTI_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_PUTI_ERROR_MESSAGE AS PUTI_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.CONTRACT_ID_ATTRIBUTE_NAME AS CONTRACT_ID_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.CONTRACT_ID_ERROR_SEVERITY AS CONTRACT_ID_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_CONTRACT_ID_ERROR_MESSAGE AS CONTRACT_ID_ERROR_MESSAGE,
+        EXP_CONSOLIDATE_VALIDATIONSOut.OLD_PA_ATTRIBUTE_NAME AS OLD_PA_ATTRIBUTE_NAME,
+        EXP_CONSOLIDATE_VALIDATIONSOut.OLD_PA_ERROR_SEVERITY AS OLD_PA_ERROR_SEVERITY,
+        EXP_CONSOLIDATE_VALIDATIONSOut.O_OLD_PA_ERROR_MESSAGE AS OLD_PA_ERROR_MESSAGE
+    FROM EXP_CONSOLIDATE_VALIDATIONSOut
+),
+
+DSR_SC_mplt_DV_PROCESS_ERROR_DETAILSOut AS (
+    SELECT
+        FIL_ERROR_LOGICOut.OLD_PA_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_6,
+        FIL_ERROR_LOGICOut.OLD_PA_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_6,
+        FIL_ERROR_LOGICOut.OLD_PA_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_6,
+        FIL_ERROR_LOGICOut.NEW_PA_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_7,
+        FIL_ERROR_LOGICOut.NEW_PA_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_7,
+        FIL_ERROR_LOGICOut.NEW_PA_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_7,
+        FIL_ERROR_LOGICOut.LIFECYCLE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_8,
+        FIL_ERROR_LOGICOut.LIFECYCLE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_8,
+        FIL_error_LOGICOut.LIFECYCLE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_8,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_2,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_3,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_4,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_5,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_6,
+        FIL_ERROR_LOGICOut.BUSINESS_DATE AS INPUT_BATCH_BUSINESS_DATE,
+        FIL_ERROR_LOGICOut.BATCH_ID AS INPUT_BATCH_ID,
+        FIL_ERROR_LOGICOut.WORKFLOW_NAME AS INPUT_WORKFLOW_NAME,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_7,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_8,
+        FIL_ERROR_LOGICOut.PUTI_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_2,
+        FIL_ERROR_LOGICOut.PUTI_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_2,
+        FIL_ERROR_LOGICOut.PUTI_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_2,
+        FIL_ERROR_LOGICOut.CONTRACT_ID_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_3,
+        FIL_ERROR_LOGICOut.CONTRACT_ID_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_3,
+        FIL_ERROR_LOGICOut.CONTRACT_ID_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_3,
+        FIL_ERROR_LOGICOut.CMF_CODE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_4,
+        FIL_ERROR_LOGICOut.CMF_CODE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_4,
+        FIL_ERROR_LOGICOut.MAPPING_NAME AS INPUT_MAPPING_NAME,
+        FIL_ERROR_LOGICOut.TARGET_NAME AS INPUT_TARGET_NAME,
+        FIL_ERROR_LOGICOut.ID AS INPUT_REFERENCE_RECORD_ID,
+        FIL_ERROR_LOGICOut.CurrentlyProcessedFileName AS INPUT_FILE_NAME,
+        FIL_ERROR_LOGICOut.ENTITY_ID_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_1,
+        FIL_ERROR_LOGICOut.ENTITY_ID_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_1,
+        FIL_ERROR_LOGICOut.ENTITY_ID_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_1,
+        FIL_ERROR_LOGICOut.VALIDATION_NAME AS INPUT_ERROR_CODE_1,
+        FIL_ERROR_LOGICOut.BATCH_DETAILS_ID AS INPUT_BATCH_DETAILS_ID,
+        FIL_ERROR_LOGICOut.BATCH_START_DATE AS INPUT_BATCH_START_DATE,
+        FIL_ERROR_LOGICOut.CMF_CODE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_4,
+        FIL_ERROR_LOGICOut.ACTIONTYPE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_9,
+        FIL_ERROR_LOGICOut.ACTIONTYPE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_9,
+        FIL_ERROR_LOGICOut.ACTIONTYPE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_9,
+        FIL_ERROR_LOGICOut.EVENTTYPE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_10,
+        FIL_ERROR_LOGICOut.EVENTTYPE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_10,
+        FIL_ERROR_LOGICOut.EVENTTYPE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_10,
+        FIL_ERROR_LOGICOut.TMF_CODE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_5,
+        FIL_ERROR_LOGICOut.TMF_CODE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_5,
+        FIL_ERROR_LOGICOut.TMF_CODE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_5
+    FROM DSR_FIL_ERROR_LOGICOut
+    WHERE MD_ERROR_IND = 1
+),
+
+SC_mplt_DV_PROCESS_ERROR_DETAILSOut AS (
+    SELECT
+        ID,
+        PROCESS_DATE,
+        REFERENCE_BATCH_ID,
+        REFERENCE_PROCESS,
+        REFERENCE_SUB_PROCESS,
+        REFERENCE_TARGET_NAME,
+        REFERENCE_RECORD_ID,
+        REFERENCE_BUSINESS_KEY,
+        REFERENCE_ATTRIBUTE_NAME,
+        REFERENCE_ATTRIBUTE_VALUE,
+        ERROR_CODE,
+        ERROR_SEVERITY,
+        ADDITIONAL_DETAILS,
+        REFERENCE_BATCH_DETAILS_ID,
+        BATCH_START_DATE AS CREATED_TS,
+        OLD_PA_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_6,
+        OLD_PA_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_6,
+        OLD_PA_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_6,
+        NEW_PA_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_7,
+        NEW_PA_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_7,
+        NEW_PA_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_7,
+        LIFECYCLE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_8,
+        LIFECYCLE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_8,
+        LIFECYCLE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_8,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_2,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_3,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_4,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_5,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_6,
+        BUSINESS_DATE AS INPUT_BATCH_BUSINESS_DATE,
+        BATCH_ID AS INPUT_BATCH_ID,
+        WORKFLOW_NAME AS INPUT_WORKFLOW_NAME,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_7,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_8,
+        PUTI_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_2,
+        PUTI_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_2,
+        PUTI_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_2,
+        CONTRACT_ID_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_3,
+        CONTRACT_ID_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_3,
+        CONTRACT_ID_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_3,
+        CMF_CODE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_4,
+        CMF_CODE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_4,
+        MAPPING_NAME AS INPUT_MAPPING_NAME,
+        TARGET_NAME AS INPUT_TARGET_NAME,
+        ID AS INPUT_REFERENCE_RECORD_ID,
+        CurrentlyProcessedFileName AS INPUT_FILE_NAME,
+        ENTITY_ID_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_1,
+        ENTITY_ID_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_1,
+        ENTITY_ID_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_1,
+        VALIDATION_NAME AS INPUT_ERROR_CODE_1,
+        BATCH_DETAILS_ID AS INPUT_BATCH_DETAILS_ID,
+        BATCH_START_DATE AS INPUT_BATCH_START_DATE,
+        CMF_CODE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_4,
+        ACTIONTYPE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_9,
+        ACTIONTYPE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_9,
+        ACTIONTYPE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_9,
+        EVENTTYPE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_10,
+        EVENTTYPE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_10,
+        EVENTTYPE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_10,
+        TMF_CODE_ATTRIBUTE_NAME AS INPUT_ATTRIBUTE_NAME_5,
+        TMF_CODE_ERROR_MESSAGE AS INPUT_ATTRIBUTE_VALUE_5,
+        TMF_CODE_ERROR_SEVERITY AS INPUT_ERROR_SEVERITY_5
+    FROM DSR_SC_mplt_DV_PROCESS_ERROR_DETAILSOut
+),
+
+DSR_SC_PROCESS_ERROR_DETAILSOut AS (
+    SELECT
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.ID AS ID,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.PROCESS_DATE AS PROCESS_DATE,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_BATCH_ID AS REFERENCE_BATCH_ID,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_PROCESS AS REFERENCE_PROCESS,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_SUB_PROCESS AS REFERENCE_SUB_PROCESS,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_TARGET_NAME AS REFERENCE_TARGET_NAME,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_RECORD_ID AS REFERENCE_RECORD_ID,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_BUSINESS_KEY AS REFERENCE_BUSINESS_KEY,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_ATTRIBUTE_NAME AS REFERENCE_ATTRIBUTE_NAME,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_ATTRIBUTE_VALUE AS REFERENCE_ATTRIBUTE_VALUE,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.ERROR_CODE AS ERROR_CODE,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.ERROR_SEVERITY AS ERROR_SEVERITY,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.ADDITIONAL_DETAILS AS ADDITIONAL_DETAILS,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.REFERENCE_BATCH_DETAILS_ID AS REFERENCE_BATCH_DETAILS_ID,
+        SC_mplt_DV_PROCESS_ERROR_DETAILSOut.CREATED_TS AS CREATED_TS
+    FROM SC_mplt_DV_PROCESS_ERROR_DETAILSOut
+)
+
+SELECT
+    ID,
+    PROCESS_DATE,
+    REFERENCE_BATCH_ID,
+    REFERENCE_PROCESS,
+    REFERENCE_SUB_PROCESS,
+    REFERENCE_TARGET_NAME,
+    REFERENCE_RECORD_ID,
+    REFERENCE_BUSINESS_KEY,
+    REFERENCE_ATTRIBUTE_NAME,
+    REFERENCE_ATTRIBUTE_VALUE,
+    ERROR_CODE,
+    ERROR_SEVERITY,
+    ADDITIONAL_DETAILS,
+    REFERENCE_BATCH_DETAILS_ID,
+    CREATED_TS
+FROM DSR_SC_PROCESS_ERROR_DETAILSOut
