@@ -1,4 +1,10 @@
-name: mplt_DV_PROCESS_ERROR_DETAILS
+name: m_LDSA_PARTICIPANT_DATA_LOAD
 config-version: 2
 
 vars:
+  TOT_REC_COUNT: 'null'
+  BATCH_START_DATE: 'null'
+  TARGET_NAME: 'null'
+  BATCH_ID: 0
+  FILE_NAME_OVERRIDE: 'null'
+  FILE_NAME: 'null'
