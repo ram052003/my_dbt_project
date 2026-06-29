@@ -1,18 +1,6 @@
 version: 2
 
 sources:
-  - name: SC_LKP_CALENDAR_DIM_BOE_1
+  - name: tMSSqlRow_1
     tables:
-      - name: CALENDAR_DIM
-  - name: SC_RR_TRIPARTY_COLL_AND_EXP_FACT
-    tables:
-      - name: RR_TRIPARTY_COLL_AND_EXP_FACT
-  - name: SC_LKP_BATCH_DETAILS_ID_1
-    tables:
-      - name: BATCH_DETAILS
-  - name: SC_RR_TRADE_AND_TRANSACTION_FACT
-    tables:
-      - name: RR_TRADE_AND_TRANSACTION_FACT
-  - name: SC_RR_POSITIONS_FACT
-    tables:
-      - name: RR_POSITIONS_FACT
+      - name: tMSSqlRow_1
