@@ -1,0 +1,130 @@
+{{ config(
+    materialized='incremental',
+    alias='TEMP_DIR+VERINT_ACTV_MAP_INS',
+    schema='',
+    pre_hook="",
+    post_hook="",
+    incremental_strategy='overwrite'
+) }}
+
+WITH VERINT_ACTV_MAPOut AS (
+    SELECT
+        ACTV_MAP_ID,
+        EFF_DTTM,
+        ACTV_ID,
+        MAPPED_ACTV_ID,
+        MOD_BY
+    FROM {{ ref('VERINT_ACTV_MAP') }}
+    WHERE CURR_IND = 'Y'
+),
+
+CURRENT_TIMESTAMPOut AS (
+    SELECT
+        TO_VARCHAR(CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP()), 'YYYY-MM-DD HH24:MI:SS.FF3') AS UPDT_END_DTTM,
+        TO_VARCHAR(DATEADD(SECOND, 1, CONVERT_TIMEZONE('UTC', CURRENT_TIMESTAMP())), 'YYYY-MM-DD HH24:MI:SS.FF3') AS EFF_DTTM,
+        TO_VARCHAR(CURRENT_TIMESTAMP(), 'YYYY-MM-DD HH24:MI:SS.FF3') AS AUD_CRE_DTTM
+),
+
+ACTIVITYMAPPINGOut AS (
+    SELECT
+        ID AS ACTV_MAP_ID,
+        ACTIVITYID AS ACTV_ID,
+        MAPPEDACTIVITYID AS MAPPED_ACTV_ID,
+        MODIFIEDBY AS MOD_BY
+    FROM {{ ref('ACTIVITYMAPPING') }}
+),
+
+LKP_CRCOut AS (
+    SELECT
+        ACTV_MAP_ID,
+        EFF_DTTM,
+        ACTV_ID,
+        MAPPED_ACTV_ID,
+        MOD_BY,
+        MD5(CONCAT(
+            COALESCE(ACTV_ID::VARCHAR, ''),
+            '|',
+            COALESCE(MAPPED_ACTV_ID::VARCHAR, ''),
+            '|',
+            COALESCE(MOD_BY::VARCHAR, '')
+        )) AS CRC
+    FROM VERINT_ACTV_MAPOut
+),
+
+tAddCRCRow_3_Lookup_LastMatchOut AS (
+    SELECT
+        DISTINCT ACTV_MAP_ID,
+        LAST_VALUE(EFF_DTTM) OVER (PARTITION BY ACTV_MAP_ID ORDER BY ACTV_MAP_ID) AS EFF_DTTM,
+        LAST_VALUE(ACTV_ID) OVER (PARTITION BY ACTV_MAP_ID ORDER BY ACTV_MAP_ID) AS ACTV_ID,
+        LAST_VALUE(MAPPED_ACTV_ID) OVER (PARTITION BY ACTV_MAP_ID ORDER BY ACTV_MAP_ID) AS MAPPED_ACTV_ID,
+        LAST_VALUE(MOD_BY) OVER (PARTITION BY ACTV_MAP_ID ORDER BY ACTV_MAP_ID) AS MOD_BY,
+        LAST_VALUE(CRC) OVER (PARTITION BY ACTV_MAP_ID ORDER BY ACTV_MAP_ID) AS CRC
+    FROM LKP_CRCOut
+),
+
+SRC_CRCOut AS (
+    SELECT
+        ACTV_MAP_ID,
+        ACTV_ID,
+        MAPPED_ACTV_ID,
+        MOD_BY,
+        MD5(CONCAT(
+            COALESCE(ACTV_ID::VARCHAR, ''),
+            '|',
+            COALESCE(MAPPED_ACTV_ID::VARCHAR, ''),
+            '|',
+            COALESCE(MOD_BY::VARCHAR, '')
+        )) AS CRC
+    FROM ACTIVITYMAPPINGOut
+),
+
+tMap_1Out AS (
+    SELECT
+        SRC_CRCOut.CRC AS CRC_1,
+        LKP_CRCOut.CRC AS CRC_2,
+        CURRENT_TIMESTAMPOut.EFF_DTTM AS EFF_DTTM_1,
+        LKP_CRCOut.EFF_DTTM AS EFF_DTTM_2,
+        SRC_CRCOut.ACTV_ID,
+        CURRENT_TIMESTAMPOut.AUD_CRE_DTTM,
+        SRC_CRCOut.MOD_BY,
+        SRC_CRCOut.MAPPED_ACTV_ID,
+        SRC_CRCOut.ACTV_MAP_ID,
+        CURRENT_TIMESTAMPOut.UPDT_END_DTTM
+    FROM SRC_CRCOut
+    CROSS JOIN CURRENT_TIMESTAMPOut
+    INNER JOIN tAddCRCRow_3_Lookup_LastMatchOut
+        ON SRC_CRCOut.ACTV_MAP_ID = tAddCRCRow_3_Lookup_LastMatchOut.ACTV_MAP_ID
+),
+
+lnk_insertOut AS (
+    SELECT
+        ACTV_MAP_ID,
+        'VERINT' AS SOR_CD,
+        EFF_DTTM_1 AS EFF_DTTM,
+        TO_TIMESTAMP_NTZ('9999-12-31 23:59:59.9999999', 'YYYY-MM-DD HH24:MI:SS.FF7') AS END_DTTM,
+        ACTV_MAP_ID || '~' || 'VERINT' AS UNQ_KEY_TXT,
+        ACTV_ID,
+        MAPPED_ACTV_ID,
+        writeSplForNullString(MOD_BY) AS MOD_BY,
+        'ETL-INSERT' AS AUD_CRE_BY_NM,
+        AUD_CRE_DTTM,
+        NULL AS ETL_BATCH_ID,
+        'Y' AS CURR_IND
+    FROM tMap_1Out
+    WHERE CRC_1 <> CRC_2
+)
+
+SELECT
+    ACTV_MAP_ID,
+    SOR_CD,
+    EFF_DTTM,
+    END_DTTM,
+    UNQ_KEY_TXT,
+    ACTV_ID,
+    MAPPED_ACTV_ID,
+    MOD_BY,
+    AUD_CRE_BY_NM,
+    AUD_CRE_DTTM,
+    ETL_BATCH_ID,
+    CURR_IND
+FROM lnk_insertOut

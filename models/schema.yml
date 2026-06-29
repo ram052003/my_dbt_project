@@ -1,9 +1,12 @@
 version: 2
 
 sources:
-  - name: tFileInputDelimited_2
+  - name: tMSSqlInput_1
     tables:
-      - name: {{ TEMP_DIR }}+VERINT_ACTV_MAP_UPD_INS
-  - name: tFileInputDelimited_3
+      - name: ACTIVITYMAPPING
+  - name: tMSSqlInput_2
     tables:
-      - name: {{ TEMP_DIR }}+VERINT_ACTV_MAP_INS
+      - name: VERINT_ACTV_MAP
+  - name: tMSSqlInput_3
+    tables:
+      - name: tMSSqlInput_3
