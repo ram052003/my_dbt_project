@@ -1,6 +1,9 @@
 version: 2
 
 sources:
-  - name: tMSSqlRow_2
+  - name: tFileInputDelimited_2
     tables:
-      - name: tMSSqlRow_2
+      - name: {{ TEMP_DIR }}+VERINT_ACTV_MAP_UPD_INS
+  - name: tFileInputDelimited_3
+    tables:
+      - name: {{ TEMP_DIR }}+VERINT_ACTV_MAP_INS
