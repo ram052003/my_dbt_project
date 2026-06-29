@@ -1,9 +1,12 @@
 version: 2
 
 sources:
-  - name: tFileInputDelimited_2
+  - name: tMSSqlInput_1
     tables:
-      - name: {{ TEMP_DIR }}+VERINT_EMP_UPD_INS
-  - name: tFileInputDelimited_3
+      - name: EMPLOYEEAM
+  - name: tMSSqlInput_2
     tables:
-      - name: {{ TEMP_DIR }}+VERINT_EMP_INS
+      - name: VERINT_EMP
+  - name: tMSSqlInput_3
+    tables:
+      - name: tMSSqlInput_3
