@@ -1,4 +1,4 @@
-name: s_INT_ETL_LOADSTATUS
+name: s_VERINT_EMP_UPD_INS
 config-version: 2
 
 vars:
