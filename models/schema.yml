@@ -1,6 +1,6 @@
 version: 2
 
 sources:
-  - name: tMSSqlRow_1
+  - name: tMSSqlRow_2
     tables:
-      - name: tMSSqlRow_1
+      - name: tMSSqlRow_2
