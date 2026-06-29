@@ -1,4 +1,4 @@
-name: s_EMPLOYEEAM
+name: s_ETL_LOADSTATUS_UPD
 config-version: 2
 
 vars:

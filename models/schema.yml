@@ -1,12 +1,6 @@
 version: 2
 
 sources:
-  - name: tMSSqlInput_1
+  - name: tMSSqlRow_1
     tables:
-      - name: EMPLOYEEAM
-  - name: tMSSqlInput_2
-    tables:
-      - name: VERINT_EMP
-  - name: tMSSqlInput_3
-    tables:
-      - name: tMSSqlInput_3
+      - name: tMSSqlRow_1
