@@ -1,9 +1,7 @@
 version: 2
 
 sources:
-  - name: DS_CCLOS
+  - name: DS_ODS
     tables:
-      - name: ECM_TRACK_VW
-  - name: DS_ACCT_CLIENT
-    tables:
-      - name: TREASURY_CREDIT
+      - name: CUSTOMER_ACCOUNT_RELATIONSHIP
+      - name: COMMITMENT
