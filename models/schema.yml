@@ -1,7 +1,6 @@
 version: 2
 
 sources:
-  - name: DS_ODS
+  - name: DS_ACCT_CLIENT
     tables:
-      - name: CUSTOMER_ACCOUNT_RELATIONSHIP
-      - name: CUSTOMER
+      - name: TREASURY_CREDIT
