@@ -3,4 +3,5 @@ version: 2
 sources:
   - name: DS_ODS
     tables:
-      - name: SQL
+      - name: CUSTOMER_ACCOUNT_RELATIONSHIP
+      - name: CUSTOMER
