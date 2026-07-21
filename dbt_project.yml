@@ -1,4 +1,4 @@
-name: DF_DOC_IMAGE_CLC_CREDIT_OTHER_CIS_INSERT
+name: DF_DOC_IMAGE_Populate_TmpCISACCOUNT
 config-version: 2
 
 vars:
