@@ -1,6 +1,6 @@
 version: 2
 
 sources:
-  - name: DS_ODS
+  - name: DS_ACCT_CLIENT
     tables:
-      - name: SQL
+      - name: TREASURY_CREDIT
