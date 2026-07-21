@@ -1,12 +1,7 @@
 version: 2
 
 sources:
-  - name: tMSSqlInput_1
+  - name: DS_ODS
     tables:
-      - name: ACTIVITYMAPPING
-  - name: tMSSqlInput_2
-    tables:
-      - name: VERINT_ACTV_MAP
-  - name: tMSSqlInput_3
-    tables:
-      - name: tMSSqlInput_3
+      - name: CUSTOMER_ACCOUNT_RELATIONSHIP
+      - name: CUSTOMER

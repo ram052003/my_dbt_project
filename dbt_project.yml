@@ -1,4 +1,5 @@
-name: s_ACTIVITYMAPPING
+name: DF_DOC_IMAGE_CLC_CREDIT_OTHER_CIS_INSERT
 config-version: 2
 
 vars:
+  G_PRCS_DATE: ''''
