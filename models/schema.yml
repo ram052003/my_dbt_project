@@ -1,7 +1,30 @@
 version: 2
 
 sources:
-  - name: DS_ODS
+  - name: LKP_APP_VAR_REG_1
     tables:
-      - name: CUSTOMER_ACCOUNT_RELATIONSHIP
-      - name: COMMITMENT
+      - name: APPLICATION_VARIABLES
+  - name: SC_LKP_BATCH_DETAILS_ID_1
+    tables:
+      - name: BATCH_DETAILS
+  - name: SC_LKP_RR_BNK_REPO_INV_FACT_1
+    tables:
+      - name: RR_BNK_REPO_INV_FACT
+  - name: LKP_BST_DATE_RANGE_1
+    tables:
+      - name: BST_DATE_RANGE
+  - name: SC_RR_BNK_REPO_INV_FACT
+    tables:
+      - name: RR_BNK_REPO_INV_FACT
+  - name: LKP_RR_SFTR_TR_SPL_EXTRACTION_DATA_1
+    tables:
+      - name: RR_SFTR_TR_SPL_EXTRACTION_DATA
+  - name: LKP_SFTR_TXN_GET_PREV_ACTION_TYPE_1
+    tables:
+      - name: SFTR_TRANSACTIONS_LIVE_ARCH
+  - name: LKP_RCL_BOND_STATIC_GET_LEI_1
+    tables:
+      - name: RCL_BOND_STATIC
+  - name: LKP_SFTR_TXN_GET_ACTION_TYPE_CURR_1
+    tables:
+      - name: SFTR_TRANSACTIONS_LIVE

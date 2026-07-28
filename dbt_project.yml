@@ -1,5 +1,16 @@
-name: DF_DOC_IMAGING_TREASURY_CREDIT_CMMT
+name: m_SFTR_TRANSACTIONS_LIVE_CALM_LTD
 config-version: 2
 
 vars:
-  G_PRCS_DATE: ''''
+  TOT_REC_COUNT: 'null'
+  ENTITY: 'null'
+  FILE_SPLT_CNT: 'null'
+  EMIR_TR_EXTRACTION_MODE: 'null'
+  SOURCE_NAME: 'null'
+  ENTITY_SUFFIX: 'null'
+  BATCH_START_DATE: 'null'
+  BUSINESS_DATE: 'null'
+  TARGET_NAME: 'null'
+  SERVICE: 'null'
+  BATCH_ID: 0
+  ACU_ISSUER_FIX: 'null'
