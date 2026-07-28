@@ -1,6 +1,3 @@
 version: 2
 
 sources:
-  - name: LKP_SFTR_TRANSACTIONS_1
-    tables:
-      - name: SFTR_TRANSACTIONS_LIVE
